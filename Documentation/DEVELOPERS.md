@@ -1,6 +1,21 @@
-# Bike Inventory Developer Guide
+# 👩‍💻 Bike Inventory Developer Guide
 
 This guide is intended for developers who want to extend or modify the Bike Inventory application.
+
+## 📋 Table of Contents
+- [🛠️ Development Setup](#️-development-setup)
+  - [Local Development](#local-development)
+  - [Docker Development](#docker-development)
+- [📁 Project Structure](#-project-structure)
+- [💾 Database Schema](#-database-schema)
+- [✨ Adding New Features](#-adding-new-features)
+  - [New Fields for Parts](#new-fields-for-parts)
+  - [New Categories](#new-categories)
+  - [Custom Styling](#custom-styling)
+- [🧪 Testing](#-testing)
+- [🚀 Building for Production](#-building-for-production)
+- [🤝 Contribution Guidelines](#-contribution-guidelines)
+- [📜 License](#-license)
 
 ## Development Setup
 

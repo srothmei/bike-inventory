@@ -51,24 +51,31 @@ A mobile-friendly web application for managing your bicycle spare parts inventor
 bike-inventory/
 ├── app.py                # Main Streamlit application
 ├── db.py                 # SQLite database management module
-├── requirements.txt      # Python dependencies
-├── bike_inventory.db     # SQLite database file (created on first run)
-```
-bike-inventory/
-├── app.py                # Main Streamlit application
-├── db.py                 # SQLite database management module
+├── config.py             # Configuration management
 ├── requirements.txt      # Python dependencies
 ├── bike_inventory.db     # SQLite database file (created on first run)
 ├── Dockerfile            # Docker container definition
 ├── docker-compose.yml    # Docker Compose configuration for local deployment
 ├── docker-compose.prod.yml # Production-ready Docker Compose configuration
 ├── docker-compose.secure.yml # HTTPS-enabled Docker Compose configuration
+├── docker-compose.override.yml # Development configuration
 ├── .env.example          # Environment variables example file
-├── DOCKER_DEPLOYMENT.md  # Docker deployment instructions
-├── HTTPS_DEPLOYMENT.md   # HTTPS deployment guide
-├── MOBILE_ACCESS.md      # Mobile device access instructions
+├── entrypoint.sh         # Container initialization script
+├── healthcheck.sh        # Container health monitoring
+├── bike-inventory.sh     # Management script for deployment
+├── update.sh             # Update script for keeping app current
+├── Documentation/
+│   ├── DOCKER_DEPLOYMENT.md  # Docker deployment instructions
+│   ├── HTTPS_DEPLOYMENT.md   # HTTPS deployment guide
+│   ├── MOBILE_ACCESS.md      # Mobile device access instructions
+│   ├── DEVELOPERS.md         # Guide for developers
+│   └── DOCKER_ENHANCEMENTS.md # Docker enhancement details
+├── nginx/                # Nginx configurations for HTTPS
+│   ├── bike-inventory.conf # Nginx site configuration
+│   └── ssl/              # SSL certificates directory
 └── static/               # Static files directory
     └── images/           # Stored photos of inventory items
+```
 ```
 
 ## 💿 Installation

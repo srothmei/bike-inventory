@@ -11,14 +11,14 @@ import uuid
 from pathlib import Path
 from pyzbar.pyzbar import decode
 from db import InventoryDB
+from config import Config
 
-# Set up file paths
-STATIC_DIR = Path(__file__).parent / "static"
-IMAGE_DIR = STATIC_DIR / "images"
+# Initialize directory structure
+Config.init_dirs()
 
-# Ensure directories exist
-STATIC_DIR.mkdir(exist_ok=True)
-IMAGE_DIR.mkdir(exist_ok=True)
+# Use config for file paths
+STATIC_DIR = Config.STATIC_DIR
+IMAGE_DIR = Config.IMAGE_DIR
 
 st.set_page_config(page_title="Bike Inventory", layout="wide")
 st.title("🚲 Bike Spare Parts Inventory")

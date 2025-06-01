@@ -7,6 +7,36 @@ This guide explains how to deploy the Bike Inventory application using Docker on
 - [Docker](https://docs.docker.com/get-docker/)
 - [Docker Compose](https://docs.docker.com/compose/install/)
 
+## Quick Start with Management Script
+
+The easiest way to deploy the application is using the included management script:
+
+```bash
+# Start standard deployment
+./bike-inventory.sh start
+
+# Start production deployment with resource limits
+./bike-inventory.sh start-prod
+
+# Start secure deployment with HTTPS
+./bike-inventory.sh start-secure
+
+# Get help with other commands
+./bike-inventory.sh help
+```
+
+## Deployment Options
+
+We provide several deployment options to suit different needs:
+
+1. **Basic Deployment**: Simple setup with docker-compose.yml
+2. **Production Deployment**: Enhanced setup with resource limits and monitoring
+3. **Secure Deployment**: Adds HTTPS support for better security and camera access
+
+See the following documentation files for details:
+- [HTTPS Deployment Guide](HTTPS_DEPLOYMENT.md)
+- [Mobile Access Guide](MOBILE_ACCESS.md)
+
 ## Deployment Steps
 
 1. **Clone or Copy the Repository**
@@ -96,9 +126,32 @@ docker run --rm --volumes-from bike-inventory -v $(pwd)/backups:/backup alpine s
 docker run --rm --volumes-from bike-inventory -v $(pwd)/backups:/backup alpine sh -c "mkdir -p /app/static/images && tar xzf /backup/images.tar.gz -C /app/static/images"
 ```
 
+## Management Script Reference
+
+The `bike-inventory.sh` script provides several commands to help you manage your deployment:
+
+| Command        | Description                                    |
+|----------------|------------------------------------------------|
+| `start`        | Start standard deployment                      |
+| `start-prod`   | Start production deployment with resource limits |
+| `start-secure` | Start HTTPS-enabled deployment                 |
+| `stop`         | Stop all containers                            |
+| `logs`         | View container logs                            |
+| `status`       | Show container status                          |
+| `backup`       | Create a backup of database and images         |
+| `restore FILE` | Restore from a backup file                     |
+| `rebuild`      | Rebuild the container                          |
+| `ssl`          | Generate self-signed SSL certificate           |
+
 ## Network Configuration
 
-By default, the application is accessible on port 8501. If you need to use a different port, edit the `docker-compose.yml` file and change the port mapping:
+By default, the application is accessible on port 8501. If you need to use a different port, edit the `docker-compose.yml` file and change the port mapping, or create a `.env` file with the following content:
+
+```
+STREAMLIT_SERVER_PORT=8501
+```
+
+Replace 8501 with your desired port number.
 
 ```yaml
 ports:

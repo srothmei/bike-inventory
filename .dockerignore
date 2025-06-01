@@ -28,7 +28,18 @@ wheels/
 # Docker
 Dockerfile
 docker-compose.yml
+docker-compose.prod.yml
+docker-compose.secure.yml
 .dockerignore
+.env
+.env.example
+
+# Nginx
+nginx/ssl/
+
+# Documentation
+*.md
+LICENSE
 
 # VS Code
 .vscode/

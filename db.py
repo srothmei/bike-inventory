@@ -4,6 +4,7 @@ from sqlalchemy import create_engine, Column, Integer, String, MetaData, Table, 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.pool import StaticPool
+from config import Config
 
 Base = declarative_base()
 
@@ -31,13 +32,13 @@ class Part(Base):
         }
 
 class InventoryDB:
-    def __init__(self, db_path="bike_inventory.db"):
+    def __init__(self, db_path=None):
         """Initialize the SQLAlchemy engine and session"""
-        self.db_path = db_path
+        self.db_path = db_path or Config.DB_PATH
         # Use connect_args with check_same_thread=False to avoid threading issues
         # Use StaticPool to ensure connections are reused across threads
         self.engine = create_engine(
-            f"sqlite:///{db_path}", 
+            f"sqlite:///{self.db_path}", 
             connect_args={"check_same_thread": False},
             poolclass=StaticPool,
             echo=False

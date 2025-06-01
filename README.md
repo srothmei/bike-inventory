@@ -34,17 +34,23 @@ bike-inventory/
 ├── db.py                 # SQLite database management module
 ├── requirements.txt      # Python dependencies
 ├── bike_inventory.db     # SQLite database file (created on first run)
+```
+bike-inventory/
+├── app.py                # Main Streamlit application
+├── db.py                 # SQLite database management module
+├── requirements.txt      # Python dependencies
+├── bike_inventory.db     # SQLite database file (created on first run)
 ├── Dockerfile            # Docker container definition
 ├── docker-compose.yml    # Docker Compose configuration for local deployment
 ├── docker-compose.prod.yml # Production-ready Docker Compose configuration
+├── docker-compose.secure.yml # HTTPS-enabled Docker Compose configuration
+├── .env.example          # Environment variables example file
 ├── DOCKER_DEPLOYMENT.md  # Docker deployment instructions
+├── HTTPS_DEPLOYMENT.md   # HTTPS deployment guide
+├── MOBILE_ACCESS.md      # Mobile device access instructions
 └── static/               # Static files directory
     └── images/           # Stored photos of inventory items
 ```
-
-## Installation
-
-### Local Installation
 
 1. Clone this repository
 2. Install dependencies:
@@ -67,7 +73,15 @@ For deployment on a local network server, you can use Docker:
    ```
 3. Access the application at `http://SERVER_IP:8501`
 
-For detailed Docker deployment instructions, see [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)
+We provide several deployment options:
+- **Basic deployment**: Use docker-compose.yml for simple setups
+- **Production deployment**: Use docker-compose.prod.yml for better stability
+- **Secure deployment**: Use docker-compose.secure.yml for HTTPS support
+
+For detailed Docker deployment instructions, see:
+- [Docker Deployment Guide](DOCKER_DEPLOYMENT.md)
+- [HTTPS Deployment Guide](HTTPS_DEPLOYMENT.md)
+- [Mobile Access Guide](MOBILE_ACCESS.md)
 
 ## Usage
 

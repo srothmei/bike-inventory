@@ -7,3 +7,7 @@ streamlit-image-coordinates
 uuid
 pathlib
 sqlalchemy
+requests
+python-dotenv
+zipfile38
+numpy

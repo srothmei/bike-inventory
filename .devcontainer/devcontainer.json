@@ -12,9 +12,9 @@
 	//"forwardPorts": [8501],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "pip3 install --user -r requirements.txt",
+	"postCreateCommand": "pip3 install --user -r requirements.txt && sudo apt update && sudo apt install -y libzbar0",
 
-	"runArgs": ["-p=8501:8501"],
+	"runArgs": ["-p=8501:8501"]
 
 	// Configure tool-specific properties.
 	// "customizations": {},

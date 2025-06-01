@@ -20,7 +20,7 @@ A mobile-friendly web application for managing your bicycle spare parts inventor
 
 - Python 3.x
 - Streamlit
-- SQLite
+- SQLAlchemy (with SQLite)
 - OpenCV
 - pyzbar (barcode detection)
 - Pillow (image processing)
@@ -79,19 +79,22 @@ bike-inventory/
 ## Technical Implementation
 
 ### Database Structure
-The application uses SQLite for persistent storage with the following schema:
+The application uses SQLAlchemy with SQLite for thread-safe persistent storage. The schema is defined using SQLAlchemy ORM:
 
-```sql
-CREATE TABLE parts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    barcode TEXT,
-    category TEXT,
-    quantity INTEGER DEFAULT 1,
-    image_path TEXT,
-    timestamp TEXT
-)
+```python
+class Part(Base):
+    __tablename__ = 'parts'
+    
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    barcode = Column(String)
+    category = Column(String)
+    quantity = Column(Integer, default=1)
+    image_path = Column(String)
+    timestamp = Column(String)
 ```
+
+SQLAlchemy provides thread safety to prevent the common SQLite error: "SQLite objects created in a thread can only be used in that same thread".
 
 ### Image Storage
 Photos are stored in the file system:

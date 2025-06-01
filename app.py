@@ -26,8 +26,13 @@ st.title("🚲 Bike Spare Parts Inventory")
 # Initialize the database connection
 @st.cache_resource
 def get_db_connection():
+    """
+    Create a database connection that's properly cached and thread-safe.
+    SQLAlchemy's connection pool will handle threading issues.
+    """
     return InventoryDB()
 
+# Create a database connection that's properly cached and shared between threads
 db = get_db_connection()
 
 # Initialize session state
@@ -492,9 +497,13 @@ if st.sidebar.button("Clear All Inventory Data"):
                     except:
                         pass
             
-            # Reset the database (drop and recreate tables)
-            db.cursor.execute("DROP TABLE IF EXISTS parts")
-            db.create_tables()
+            # Reset the database by recreating the table
+            from sqlalchemy import inspect
+            from db import Base
+            
+            # Drop all tables and recreate
+            Base.metadata.drop_all(db.engine)
+            Base.metadata.create_all(db.engine)
             
             st.rerun()
     with confirm_col2:

@@ -6,3 +6,4 @@ pyzbar
 streamlit-image-coordinates
 uuid
 pathlib
+sqlalchemy

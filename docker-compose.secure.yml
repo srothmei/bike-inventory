@@ -23,7 +23,7 @@ services:
       # Proxy configuration
       - STREAMLIT_SERVER_ENABLE_CORS=true
       - STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=false
-      - STREAMLIT_SERVER_BASE_URL_PATH=""
+      #- STREAMLIT_SERVER_BASE_URL_PATH="/"
       - STREAMLIT_SERVER_HEADLESS=true
       # WebRTC settings
       - STREAMLIT_CLIENT_TOOLBAR_ITEMS=["fullscreen"]

@@ -33,6 +33,7 @@ if [[ "$STREAMLIT_SERVER_HEADLESS" == "true" ]]; then
         --server.enableXsrfProtection=false \
         --server.enableWebsocketCompression=true \
         --server.maxUploadSize=200 \
+        --server.baseUrlPath="/" \
         --browser.serverAddress="localhost" \
         --browser.gatherUsageStats=false \
         --global.developmentMode=false \

@@ -1,0 +1,8 @@
+streamlit
+streamlit-webrtc
+Pillow
+opencv-python-headless
+pyzbar
+streamlit-image-coordinates
+uuid
+pathlib

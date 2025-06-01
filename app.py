@@ -3,15 +3,17 @@ import cv2
 from PIL import Image
 import io
 import numpy as np
-from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
+from streamlit_webrtc import webrtc_streamer, WebRtcMode
 import tempfile
 import time
 import os
 import uuid
+import logging
 from pathlib import Path
 from pyzbar.pyzbar import decode
 from db import InventoryDB
 from config import Config
+from behind_proxy import is_behind_proxy, log_proxy_status, get_webrtc_context_options
 
 # Initialize directory structure
 Config.init_dirs()
@@ -42,10 +44,14 @@ if 'captured_image' not in st.session_state:
 if 'scanned_barcode' not in st.session_state:
     st.session_state['scanned_barcode'] = None
 
-# RTC configuration for WebRTC (needed for some networks)
-rtc_configuration = RTCConfiguration(
-    {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
-)
+# Log whether we're behind a proxy
+log_proxy_status()
+
+# Get the appropriate WebRTC options
+rtc_configuration, webrtc_options = get_webrtc_context_options()
+
+# Set a flag for whether to show fallback options
+show_fallbacks = is_behind_proxy()
 
 # Create tabs
 tab1, tab2 = st.tabs(["➕ Add New Item", "📋 Inventory List"])
@@ -66,9 +72,19 @@ with tab1:
             mode=WebRtcMode.SENDRECV,
             rtc_configuration=rtc_configuration,
             video_frame_callback=video_frame_callback,
-            media_stream_constraints={"video": True, "audio": False},
-            async_processing=True,
+            **webrtc_options,
         )
+        
+        # Add fallback option for environments where WebRTC might not work well
+        if show_fallbacks:
+            st.info("📸 If the camera doesn't work, you can also upload an image directly.")
+            uploaded_photo = st.file_uploader("Upload an image instead", type=["jpg", "jpeg", "png"], key="photo_upload")
+            if uploaded_photo is not None:
+                # Convert the uploaded file to an image
+                image = Image.open(uploaded_photo)
+                img_array = np.array(image)
+                st.session_state['captured_image'] = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+                st.success("Photo uploaded successfully!")
         
         if st.button("Capture Photo"):
             if ctx.video_transformer:
@@ -119,9 +135,16 @@ with tab1:
             mode=WebRtcMode.SENDRECV,
             rtc_configuration=rtc_configuration,
             video_frame_callback=barcode_scanner,
-            media_stream_constraints={"video": True, "audio": False},
-            async_processing=True,
+            **webrtc_options,
         )
+        
+        # Add fallback option for barcode
+        if show_fallbacks:
+            st.info("📊 If the camera doesn't work for scanning, you can enter the barcode manually below.")
+            manual_barcode = st.text_input("Enter barcode manually", key="manual_barcode")
+            if manual_barcode and manual_barcode.strip():
+                st.session_state['scanned_barcode'] = manual_barcode.strip()
+                st.success(f"Barcode set manually: {st.session_state['scanned_barcode']}")
         
         if st.session_state['scanned_barcode']:
             st.success(f"Barcode detected: {st.session_state['scanned_barcode']}")
@@ -244,8 +267,7 @@ with tab2:
             mode=WebRtcMode.SENDRECV,
             rtc_configuration=rtc_configuration,
             video_frame_callback=inventory_barcode_scanner,
-            media_stream_constraints={"video": True, "audio": False},
-            async_processing=True,
+            **webrtc_options,
         )
         
         # Display detected barcode

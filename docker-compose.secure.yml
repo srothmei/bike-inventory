@@ -20,6 +20,14 @@ services:
       - STREAMLIT_SERVER_ADDRESS=0.0.0.0
       - STREAMLIT_BROWSER_GATHER_USAGE_STATS=${STREAMLIT_BROWSER_GATHER_USAGE_STATS:-false}
       - STREAMLIT_THEME_PRIMARY_COLOR=${STREAMLIT_THEME_PRIMARY_COLOR:-#FF4B4B}
+      # Proxy configuration
+      - STREAMLIT_SERVER_ENABLE_CORS=true
+      - STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=false
+      - STREAMLIT_SERVER_BASE_URL_PATH=""
+      - STREAMLIT_SERVER_HEADLESS=true
+      # WebRTC settings
+      - STREAMLIT_CLIENT_TOOLBAR_ITEMS=["fullscreen"]
+      - STREAMLIT_CLIENT_ALLOW_SAME_ORIGIN=true
     restart: always
     networks:
       - bike_network
@@ -34,7 +42,7 @@ services:
           memory: ${DOCKER_RESERVE_MEMORY:-512M}
     # Add healthcheck to ensure application is running
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501"]
+      test: ["CMD", "/healthcheck.sh"]
       interval: 30s
       timeout: 10s
       retries: 3

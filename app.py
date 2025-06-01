@@ -186,18 +186,83 @@ with tab1:
             st.success(f"Added '{name}' to inventory.")
 
 with tab2:
-    # Add search and filter functionality
-    col1, col2 = st.columns([1, 1])
+    # Add search, scan and filter functionality
+    st.subheader("Search Inventory")
     
-    with col1:
-        search_query = st.text_input("🔍 Search inventory by name or barcode")
+    # Create tabs for different search methods
+    search_tab1, search_tab2 = st.tabs(["🔍 Text Search", "📊 Barcode Scan"])
     
-    with col2:
-        category_filter = st.selectbox(
-            "Filter by category",
-            ["All Categories", "Frame", "Wheels", "Drivetrain", "Brakes", "Controls", "Other"],
-            index=0
+    # Text search tab
+    with search_tab1:
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            search_query = st.text_input("Search by name or barcode")
+        
+        with col2:
+            category_filter = st.selectbox(
+                "Filter by category",
+                ["All Categories", "Frame", "Wheels", "Drivetrain", "Brakes", "Controls", "Other"],
+                index=0
+            )
+    
+    # Barcode scan tab
+    with search_tab2:
+        st.write("Scan a barcode to search the inventory")
+        
+        # Create a session state variable for inventory search
+        if 'inventory_search_barcode' not in st.session_state:
+            st.session_state['inventory_search_barcode'] = None
+        
+        # Barcode scanner function
+        def inventory_barcode_scanner(frame):
+            img = frame.to_ndarray(format="bgr24")
+            barcodes = decode(img)
+            
+            # Process detected barcodes
+            for barcode in barcodes:
+                # Extract barcode info
+                barcode_data = barcode.data.decode('utf-8')
+                
+                # Draw rectangle around barcode
+                pts = np.array([barcode.polygon], np.int32)
+                pts = pts.reshape((-1, 1, 2))
+                cv2.polylines(img, [pts], True, (0, 255, 0), 2)
+                
+                # Put text with barcode data
+                cv2.putText(img, barcode_data, (barcode.rect.left, barcode.rect.top - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                
+                # Store the most recent barcode for inventory search
+                st.session_state['inventory_search_barcode'] = barcode_data
+            
+            return img
+        
+        # WebRTC streamer for inventory barcode scanning
+        inventory_barcode_ctx = webrtc_streamer(
+            key="inventory_barcode_scanner",
+            mode=WebRtcMode.SENDRECV,
+            rtc_configuration=rtc_configuration,
+            video_frame_callback=inventory_barcode_scanner,
+            media_stream_constraints={"video": True, "audio": False},
+            async_processing=True,
         )
+        
+        # Display detected barcode
+        if st.session_state['inventory_search_barcode']:
+            st.success(f"Barcode detected: {st.session_state['inventory_search_barcode']}")
+            
+            # Use the scanned barcode for search
+            search_query = st.session_state['inventory_search_barcode']
+            
+            # Add a button to clear the search
+            if st.button("Clear Barcode Search"):
+                st.session_state['inventory_search_barcode'] = None
+                search_query = ""
+                st.rerun()
+        else:
+            # If no barcode is scanned, don't override the text search
+            search_query = search_query
 
     # Get inventory from database with search filters
     filtered_inventory = db.search_parts(

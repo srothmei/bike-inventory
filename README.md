@@ -7,7 +7,7 @@ A mobile-friendly web application for managing your bicycle spare parts inventor
 - Add spare parts to your inventory with names, barcodes, and photos
 - Scan barcodes directly from the browser using your device camera
 - Take photos of items using your device camera
-- Search inventory by name or barcode
+- Search inventory by name, text input, or direct barcode scanning
 - Filter items by category (Frame, Wheels, Drivetrain, Brakes, Controls, Other)
 - Track quantity of each part
 - Edit existing items
@@ -63,7 +63,9 @@ bike-inventory/
 
 ### Managing Inventory (Tab 2)
 1. Navigate to the "Inventory List" tab
-2. Search for items using the search box (searches both names and barcodes)
+2. Search for items using one of two methods:
+   - **Text Search**: Type in the search box to find items by name or barcode
+   - **Barcode Scan**: Use your device camera to scan a barcode directly
 3. Filter items by category using the dropdown
 4. For each item you can:
    - View item details and photo

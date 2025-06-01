@@ -1,13 +1,26 @@
-# Bike Inventory App Deployment Guide
+# 🐳 Bike Inventory App Deployment Guide
 
 This guide explains how to deploy the Bike Inventory application using Docker on a local network.
 
-## Prerequisites
+## 📋 Table of Contents
+- [🧩 Prerequisites](#-prerequisites)
+- [🚀 Quick Start with Management Script](#-quick-start-with-management-script)
+- [🔄 Deployment Options](#-deployment-options)
+- [📝 Deployment Steps](#-deployment-steps)
+- [💾 Data Persistence](#-data-persistence)
+- [🔧 Managing the Container](#-managing-the-container)
+- [🔒 Backup and Restore](#-backup-and-restore)
+- [🛠️ Management Script Reference](#️-management-script-reference)
+- [🌐 Network Configuration](#-network-configuration)
+- [🔐 Security Considerations](#-security-considerations)
+- [❓ Troubleshooting](#-troubleshooting)
+
+## 🧩 Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/)
 - [Docker Compose](https://docs.docker.com/compose/install/)
 
-## Quick Start with Management Script
+## 🚀 Quick Start with Management Script
 
 The easiest way to deploy the application is using the included management script:
 
@@ -25,7 +38,7 @@ The easiest way to deploy the application is using the included management scrip
 ./bike-inventory.sh help
 ```
 
-## Deployment Options
+## 🔄 Deployment Options
 
 We provide several deployment options to suit different needs:
 
@@ -37,7 +50,7 @@ See the following documentation files for details:
 - [HTTPS Deployment Guide](HTTPS_DEPLOYMENT.md)
 - [Mobile Access Guide](MOBILE_ACCESS.md)
 
-## Deployment Steps
+## 📝 Deployment Steps
 
 1. **Clone or Copy the Repository**
    
@@ -66,7 +79,7 @@ See the following documentation files for details:
 
    Replace `SERVER_IP` with the IP address of your server/computer.
 
-## Data Persistence
+## 💾 Data Persistence
 
 The application uses Docker volumes to ensure data persistence:
 
@@ -75,7 +88,7 @@ The application uses Docker volumes to ensure data persistence:
 
 These volumes will persist even if the container is removed or updated.
 
-## Managing the Container
+## 🔧 Managing the Container
 
 - **View logs**:
   ```bash
@@ -97,9 +110,9 @@ These volumes will persist even if the container is removed or updated.
   docker-compose up -d --build
   ```
 
-## Backup and Restore
+## 🔒 Backup and Restore
 
-### Backup
+### 📤 Backup
 
 To backup your data:
 
@@ -114,7 +127,7 @@ docker run --rm --volumes-from bike-inventory -v $(pwd)/backups:/backup alpine s
 docker run --rm --volumes-from bike-inventory -v $(pwd)/backups:/backup alpine sh -c "tar czf /backup/images.tar.gz -C /app/static/images ."
 ```
 
-### Restore
+### 📥 Restore
 
 To restore from backup:
 
@@ -126,7 +139,7 @@ docker run --rm --volumes-from bike-inventory -v $(pwd)/backups:/backup alpine s
 docker run --rm --volumes-from bike-inventory -v $(pwd)/backups:/backup alpine sh -c "mkdir -p /app/static/images && tar xzf /backup/images.tar.gz -C /app/static/images"
 ```
 
-## Management Script Reference
+## 🛠️ Management Script Reference
 
 The `bike-inventory.sh` script provides several commands to help you manage your deployment:
 
@@ -143,7 +156,7 @@ The `bike-inventory.sh` script provides several commands to help you manage your
 | `rebuild`      | Rebuild the container                          |
 | `ssl`          | Generate self-signed SSL certificate           |
 
-## Network Configuration
+## 🌐 Network Configuration
 
 By default, the application is accessible on port 8501. If you need to use a different port, edit the `docker-compose.yml` file and change the port mapping, or create a `.env` file with the following content:
 
@@ -158,7 +171,7 @@ ports:
   - "YOUR_PORT:8501"
 ```
 
-## Security Considerations
+## 🔐 Security Considerations
 
 This deployment is intended for local network use. For public internet deployment, consider:
 
@@ -166,7 +179,7 @@ This deployment is intended for local network use. For public internet deploymen
 - Using HTTPS encryption
 - Implementing network level security measures
 
-## Troubleshooting
+## ❓ Troubleshooting
 
 - **Camera access issues**: Camera access requires HTTPS for many browsers. For local deployment, you may need to configure special exemptions in your browser, or set up HTTPS.
 - **Container fails to start**: Check logs using `docker-compose logs -f`

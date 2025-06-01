@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  bike-inventory:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bike-inventory
+    ports:
+      - "8501:8501"
+    volumes:
+      # Mount the database and images directory for persistence
+      - bike_data:/app/static/images
+      - bike_db:/app
+    restart: unless-stopped
+    networks:
+      - bike_network
+
+volumes:
+  bike_data:
+    name: bike_inventory_images
+  bike_db:
+    name: bike_inventory_db
+
+networks:
+  bike_network:
+    name: bike_inventory_network
+    driver: bridge

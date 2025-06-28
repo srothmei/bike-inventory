@@ -85,16 +85,52 @@ with tab1:
             img_array = np.array(image)
             img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
             
-            # Try to decode barcodes from the image
+            # Enhanced barcode detection with multiple attempts
+            barcodes = []
+            
+            # Attempt 1: Try with original image
             barcodes = decode(img_bgr)
+            
+            # Attempt 2: Try with grayscale conversion
+            if not barcodes:
+                img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+                barcodes = decode(img_gray)
+            
+            # Attempt 3: Try with image enhancement (increase contrast)
+            if not barcodes:
+                img_enhanced = cv2.convertScaleAbs(img_gray, alpha=1.5, beta=20)
+                barcodes = decode(img_enhanced)
+            
+            # Attempt 4: Try with different resolutions
+            if not barcodes:
+                # Resize to different scales
+                for scale in [0.5, 1.5, 2.0]:
+                    h, w = img_gray.shape
+                    img_resized = cv2.resize(img_gray, (int(w*scale), int(h*scale)))
+                    barcodes = decode(img_resized)
+                    if barcodes:
+                        break
+            
+            # Display the captured image for debugging
+            st.image(img_bgr, caption="Captured Image for Barcode Scan", channels="BGR", width=300)
+            
             if barcodes:
                 for barcode in barcodes:
                     barcode_data = barcode.data.decode('utf-8')
+                    barcode_type = barcode.type
                     st.session_state['scanned_barcode'] = barcode_data
-                    st.success(f"Barcode detected: {barcode_data}")
+                    st.success(f"✅ {barcode_type} detected: {barcode_data}")
                     break  # Use the first barcode found
             else:
-                st.warning("No barcode detected. Try taking another photo or enter manually below.")
+                st.warning("❌ No barcode detected. Try:")
+                st.info("""
+                - Ensure good lighting
+                - Hold the camera steady  
+                - Make sure the entire barcode/QR code is visible
+                - Try different distances from the code
+                - Ensure the barcode has good contrast
+                """)
+                st.warning("Or enter the barcode manually below.")
         
         # Manual barcode entry
         st.info("📊 Or enter the barcode manually:")
@@ -202,16 +238,52 @@ with tab2:
             img_array = np.array(image)
             img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
             
-            # Try to decode barcodes from the image
+            # Enhanced barcode detection with multiple attempts
+            barcodes = []
+            
+            # Attempt 1: Try with original image
             barcodes = decode(img_bgr)
+            
+            # Attempt 2: Try with grayscale conversion
+            if not barcodes:
+                img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+                barcodes = decode(img_gray)
+            
+            # Attempt 3: Try with image enhancement (increase contrast)
+            if not barcodes:
+                img_enhanced = cv2.convertScaleAbs(img_gray, alpha=1.5, beta=20)
+                barcodes = decode(img_enhanced)
+            
+            # Attempt 4: Try with different resolutions
+            if not barcodes:
+                # Resize to different scales
+                for scale in [0.5, 1.5, 2.0]:
+                    h, w = img_gray.shape
+                    img_resized = cv2.resize(img_gray, (int(w*scale), int(h*scale)))
+                    barcodes = decode(img_resized)
+                    if barcodes:
+                        break
+            
+            # Display the captured image for debugging
+            st.image(img_bgr, caption="Captured Image for Barcode Search", channels="BGR", width=300)
+            
             if barcodes:
                 for barcode in barcodes:
                     barcode_data = barcode.data.decode('utf-8')
+                    barcode_type = barcode.type
                     st.session_state['inventory_search_barcode'] = barcode_data
-                    st.success(f"Barcode detected: {barcode_data}")
+                    st.success(f"✅ {barcode_type} detected: {barcode_data}")
                     break  # Use the first barcode found
             else:
-                st.warning("No barcode detected. Try taking another photo or use text search.")
+                st.warning("❌ No barcode detected. Try:")
+                st.info("""
+                - Ensure good lighting
+                - Hold the camera steady  
+                - Make sure the entire barcode/QR code is visible
+                - Try different distances from the code
+                - Ensure the barcode has good contrast
+                """)
+                st.warning("Or use text search instead.")
         
         # Display detected barcode
         if st.session_state['inventory_search_barcode']:

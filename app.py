@@ -3,7 +3,6 @@ import cv2
 from PIL import Image
 import io
 import numpy as np
-from streamlit_webrtc import webrtc_streamer, WebRtcMode
 import tempfile
 import time
 import os
@@ -13,7 +12,6 @@ from pathlib import Path
 from pyzbar.pyzbar import decode
 from db import InventoryDB
 from config import Config
-from behind_proxy import is_behind_proxy, log_proxy_status, get_webrtc_context_options
 
 # Initialize directory structure
 Config.init_dirs()
@@ -44,15 +42,6 @@ if 'captured_image' not in st.session_state:
 if 'scanned_barcode' not in st.session_state:
     st.session_state['scanned_barcode'] = None
 
-# Log whether we're behind a proxy
-log_proxy_status()
-
-# Get the appropriate WebRTC options
-rtc_configuration, webrtc_options = get_webrtc_context_options()
-
-# Set a flag for whether to show fallback options
-show_fallbacks = is_behind_proxy()
-
 # Create tabs
 tab1, tab2 = st.tabs(["➕ Add New Item", "📋 Inventory List"])
 
@@ -63,42 +52,24 @@ with tab1:
     with col1:
         st.subheader("📷 Take Photo")
         
-        def video_frame_callback(frame):
-            img = frame.to_ndarray(format="bgr24")
-            return img
-
-        ctx = webrtc_streamer(
-            key="photo_capture",
-            mode=WebRtcMode.SENDRECV,
-            rtc_configuration=rtc_configuration,
-            video_frame_callback=video_frame_callback,
-            **webrtc_options,
-        )
+        # Use simplified camera input
+        camera_photo = st.camera_input("Take a picture", key="photo_camera")
+        if camera_photo is not None:
+            # Convert the camera input to OpenCV format
+            image = Image.open(camera_photo)
+            img_array = np.array(image)
+            st.session_state['captured_image'] = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+            st.success("Photo captured successfully!")
         
-        # Add fallback option for environments where WebRTC might not work well
-        if show_fallbacks:
-            st.info("📸 If the camera doesn't work, you can also upload an image directly.")
-            uploaded_photo = st.file_uploader("Upload an image instead", type=["jpg", "jpeg", "png"], key="photo_upload")
-            if uploaded_photo is not None:
-                # Convert the uploaded file to an image
-                image = Image.open(uploaded_photo)
-                img_array = np.array(image)
-                st.session_state['captured_image'] = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
-                st.success("Photo uploaded successfully!")
-        
-        if st.button("Capture Photo"):
-            if ctx.video_transformer:
-                if ctx.state.playing:
-                    # Get frame from the video stream
-                    frame = ctx.video_receiver.get_frame()
-                    if frame is not None:
-                        img = frame.to_ndarray(format="bgr24")
-                        st.session_state['captured_image'] = img
-                        st.success("Photo captured!")
-                else:
-                    st.warning("Please start the camera by clicking 'START' first.")
-            else:
-                st.warning("Camera is not available. Please allow camera access.")
+        # File upload option as alternative
+        st.info("📸 Or upload an image file:")
+        uploaded_photo = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"], key="photo_upload")
+        if uploaded_photo is not None:
+            # Convert the uploaded file to an image
+            image = Image.open(uploaded_photo)
+            img_array = np.array(image)
+            st.session_state['captured_image'] = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+            st.success("Photo uploaded successfully!")
         
         if st.session_state['captured_image'] is not None:
             st.image(st.session_state['captured_image'], caption="Captured Photo", channels="BGR")
@@ -106,48 +77,34 @@ with tab1:
     with col2:
         st.subheader("📊 Scan Barcode")
         
-        def barcode_scanner(frame):
-            img = frame.to_ndarray(format="bgr24")
-            barcodes = decode(img)
+        # Use simplified camera input for barcode scanning
+        barcode_camera = st.camera_input("Scan barcode with camera", key="barcode_camera")
+        if barcode_camera is not None:
+            # Convert the camera input to OpenCV format
+            image = Image.open(barcode_camera)
+            img_array = np.array(image)
+            img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
             
-            # Process detected barcodes
-            for barcode in barcodes:
-                # Extract barcode info
-                barcode_data = barcode.data.decode('utf-8')
-                barcode_type = barcode.type
-                
-                # Draw rectangle around barcode
-                pts = np.array([barcode.polygon], np.int32)
-                pts = pts.reshape((-1, 1, 2))
-                cv2.polylines(img, [pts], True, (0, 255, 0), 2)
-                
-                # Put text with barcode data
-                cv2.putText(img, barcode_data, (barcode.rect.left, barcode.rect.top - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                
-                # Store the most recent barcode
-                st.session_state['scanned_barcode'] = barcode_data
-            
-            return img
+            # Try to decode barcodes from the image
+            barcodes = decode(img_bgr)
+            if barcodes:
+                for barcode in barcodes:
+                    barcode_data = barcode.data.decode('utf-8')
+                    st.session_state['scanned_barcode'] = barcode_data
+                    st.success(f"Barcode detected: {barcode_data}")
+                    break  # Use the first barcode found
+            else:
+                st.warning("No barcode detected. Try taking another photo or enter manually below.")
         
-        barcode_ctx = webrtc_streamer(
-            key="barcode_scanner",
-            mode=WebRtcMode.SENDRECV,
-            rtc_configuration=rtc_configuration,
-            video_frame_callback=barcode_scanner,
-            **webrtc_options,
-        )
-        
-        # Add fallback option for barcode
-        if show_fallbacks:
-            st.info("📊 If the camera doesn't work for scanning, you can enter the barcode manually below.")
-            manual_barcode = st.text_input("Enter barcode manually", key="manual_barcode")
-            if manual_barcode and manual_barcode.strip():
-                st.session_state['scanned_barcode'] = manual_barcode.strip()
-                st.success(f"Barcode set manually: {st.session_state['scanned_barcode']}")
+        # Manual barcode entry
+        st.info("📊 Or enter the barcode manually:")
+        manual_barcode = st.text_input("Enter barcode manually", key="manual_barcode")
+        if manual_barcode and manual_barcode.strip():
+            st.session_state['scanned_barcode'] = manual_barcode.strip()
+            st.success(f"Barcode set manually: {st.session_state['scanned_barcode']}")
         
         if st.session_state['scanned_barcode']:
-            st.success(f"Barcode detected: {st.session_state['scanned_barcode']}")
+            st.success(f"Current barcode: {st.session_state['scanned_barcode']}")
 
     # Add item form
     st.subheader("Item Details")
@@ -237,42 +194,28 @@ with tab2:
         if 'inventory_search_barcode' not in st.session_state:
             st.session_state['inventory_search_barcode'] = None
         
-        # Barcode scanner function
-        def inventory_barcode_scanner(frame):
-            img = frame.to_ndarray(format="bgr24")
-            barcodes = decode(img)
+        # Use simplified camera input for inventory barcode scanning
+        inventory_barcode_camera = st.camera_input("Scan barcode to search inventory", key="inventory_barcode_camera")
+        if inventory_barcode_camera is not None:
+            # Convert the camera input to OpenCV format
+            image = Image.open(inventory_barcode_camera)
+            img_array = np.array(image)
+            img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
             
-            # Process detected barcodes
-            for barcode in barcodes:
-                # Extract barcode info
-                barcode_data = barcode.data.decode('utf-8')
-                
-                # Draw rectangle around barcode
-                pts = np.array([barcode.polygon], np.int32)
-                pts = pts.reshape((-1, 1, 2))
-                cv2.polylines(img, [pts], True, (0, 255, 0), 2)
-                
-                # Put text with barcode data
-                cv2.putText(img, barcode_data, (barcode.rect.left, barcode.rect.top - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                
-                # Store the most recent barcode for inventory search
-                st.session_state['inventory_search_barcode'] = barcode_data
-            
-            return img
-        
-        # WebRTC streamer for inventory barcode scanning
-        inventory_barcode_ctx = webrtc_streamer(
-            key="inventory_barcode_scanner",
-            mode=WebRtcMode.SENDRECV,
-            rtc_configuration=rtc_configuration,
-            video_frame_callback=inventory_barcode_scanner,
-            **webrtc_options,
-        )
+            # Try to decode barcodes from the image
+            barcodes = decode(img_bgr)
+            if barcodes:
+                for barcode in barcodes:
+                    barcode_data = barcode.data.decode('utf-8')
+                    st.session_state['inventory_search_barcode'] = barcode_data
+                    st.success(f"Barcode detected: {barcode_data}")
+                    break  # Use the first barcode found
+            else:
+                st.warning("No barcode detected. Try taking another photo or use text search.")
         
         # Display detected barcode
         if st.session_state['inventory_search_barcode']:
-            st.success(f"Barcode detected: {st.session_state['inventory_search_barcode']}")
+            st.success(f"Searching for barcode: {st.session_state['inventory_search_barcode']}")
             
             # Use the scanned barcode for search
             search_query = st.session_state['inventory_search_barcode']

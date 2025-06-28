@@ -18,34 +18,40 @@ def configure_webrtc_options():
     options = {
         "media_stream_constraints": {"video": True, "audio": False},
         "async_processing": True,
+        "desired_playing_state": False,  # Don't auto-start
     }
     
     # Create the RTC configuration
     ice_servers = [
-        {"urls": ["stun:stun.l.google.com:19302"]}
+        {"urls": ["stun:stun.l.google.com:19302"]},
+        {"urls": ["stun:stun1.l.google.com:19302"]},
+        {"urls": ["stun:stun2.l.google.com:19302"]},
+        {"urls": ["stun:stun3.l.google.com:19302"]},
+        {"urls": ["stun:stun4.l.google.com:19302"]}
     ]
     
     if is_behind_proxy():
-        # Add more STUN servers for redundancy when behind a proxy
-        ice_servers.extend([
-            {"urls": ["stun:stun1.l.google.com:19302"]},
-            {"urls": ["stun:stun2.l.google.com:19302"]},
-            {"urls": ["stun:stun3.l.google.com:19302"]},
-            {"urls": ["stun:stun4.l.google.com:19302"]}
-        ])
         # Additional options for proxy environments
-        options["video_html_attrs"] = {"controls": True, "autoPlay": True}
+        options["video_html_attrs"] = {"controls": True, "autoPlay": True, "muted": True}
         options["media_stream_constraints"]["video"] = {
-            "width": {"ideal": 640},
-            "height": {"ideal": 480},
-            "frameRate": {"ideal": 15}
+            "width": {"ideal": 640, "max": 1280},
+            "height": {"ideal": 480, "max": 720},
+            "frameRate": {"ideal": 15, "max": 30}
+        }
+        # Add additional timeout and connection options for proxy environments
+        options["sendback_audio"] = False
+        options["player_factory"] = None
+    else:
+        # Options for direct connections
+        options["media_stream_constraints"]["video"] = {
+            "width": {"ideal": 1280},
+            "height": {"ideal": 720},
+            "frameRate": {"ideal": 30}
         }
     
     # Create and return the RTCConfiguration object
     rtc_config = RTCConfiguration({"iceServers": ice_servers})
     return rtc_config, options
-    
-    return options
 
 def log_proxy_status():
     """Log whether the app is running behind a proxy"""

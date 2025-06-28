@@ -87,28 +87,63 @@ with tab1:
             
             # Enhanced barcode detection with multiple attempts
             barcodes = []
+            detection_method = ""
             
             # Attempt 1: Try with original image
             barcodes = decode(img_bgr)
+            if barcodes:
+                detection_method = "Original image"
             
             # Attempt 2: Try with grayscale conversion
             if not barcodes:
                 img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
                 barcodes = decode(img_gray)
+                if barcodes:
+                    detection_method = "Grayscale conversion"
             
             # Attempt 3: Try with image enhancement (increase contrast)
             if not barcodes:
                 img_enhanced = cv2.convertScaleAbs(img_gray, alpha=1.5, beta=20)
                 barcodes = decode(img_enhanced)
+                if barcodes:
+                    detection_method = "Enhanced contrast"
             
-            # Attempt 4: Try with different resolutions
+            # Attempt 4: Try with binary threshold
+            if not barcodes:
+                _, img_binary = cv2.threshold(img_gray, 127, 255, cv2.THRESH_BINARY)
+                barcodes = decode(img_binary)
+                if barcodes:
+                    detection_method = "Binary threshold"
+            
+            # Attempt 5: Try with adaptive threshold
+            if not barcodes:
+                img_adaptive = cv2.adaptiveThreshold(img_gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+                barcodes = decode(img_adaptive)
+                if barcodes:
+                    detection_method = "Adaptive threshold"
+            
+            # Attempt 6: Try with different resolutions
             if not barcodes:
                 # Resize to different scales
-                for scale in [0.5, 1.5, 2.0]:
+                for scale in [0.5, 1.5, 2.0, 2.5]:
                     h, w = img_gray.shape
-                    img_resized = cv2.resize(img_gray, (int(w*scale), int(h*scale)))
-                    barcodes = decode(img_resized)
+                    new_h, new_w = int(h*scale), int(w*scale)
+                    if 50 < new_h < 2000 and 50 < new_w < 2000:
+                        img_resized = cv2.resize(img_gray, (new_w, new_h))
+                        barcodes = decode(img_resized)
+                        if barcodes:
+                            detection_method = f"Scaling ({scale}x)"
+                            break
+            
+            # Attempt 7: Try with slight rotation compensation
+            if not barcodes:
+                for angle in [-5, 5, -10, 10]:
+                    center = (img_gray.shape[1]//2, img_gray.shape[0]//2)
+                    rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+                    img_rotated = cv2.warpAffine(img_gray, rotation_matrix, (img_gray.shape[1], img_gray.shape[0]))
+                    barcodes = decode(img_rotated)
                     if barcodes:
+                        detection_method = f"Rotation ({angle}°)"
                         break
             
             # Display the captured image for debugging
@@ -120,6 +155,8 @@ with tab1:
                     barcode_type = barcode.type
                     st.session_state['scanned_barcode'] = barcode_data
                     st.success(f"✅ {barcode_type} detected: {barcode_data}")
+                    if detection_method:
+                        st.info(f"🔍 Detection method: {detection_method}")
                     break  # Use the first barcode found
             else:
                 st.warning("❌ No barcode detected. Try:")
@@ -129,6 +166,7 @@ with tab1:
                 - Make sure the entire barcode/QR code is visible
                 - Try different distances from the code
                 - Ensure the barcode has good contrast
+                - Use standard barcode formats (QR, CODE128, CODE39, EAN13)
                 """)
                 st.warning("Or enter the barcode manually below.")
         
@@ -240,28 +278,63 @@ with tab2:
             
             # Enhanced barcode detection with multiple attempts
             barcodes = []
+            search_detection_method = ""
             
             # Attempt 1: Try with original image
             barcodes = decode(img_bgr)
+            if barcodes:
+                search_detection_method = "Original image"
             
             # Attempt 2: Try with grayscale conversion
             if not barcodes:
                 img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
                 barcodes = decode(img_gray)
+                if barcodes:
+                    search_detection_method = "Grayscale conversion"
             
             # Attempt 3: Try with image enhancement (increase contrast)
             if not barcodes:
                 img_enhanced = cv2.convertScaleAbs(img_gray, alpha=1.5, beta=20)
                 barcodes = decode(img_enhanced)
+                if barcodes:
+                    search_detection_method = "Enhanced contrast"
             
-            # Attempt 4: Try with different resolutions
+            # Attempt 4: Try with binary threshold
+            if not barcodes:
+                _, img_binary = cv2.threshold(img_gray, 127, 255, cv2.THRESH_BINARY)
+                barcodes = decode(img_binary)
+                if barcodes:
+                    search_detection_method = "Binary threshold"
+            
+            # Attempt 5: Try with adaptive threshold
+            if not barcodes:
+                img_adaptive = cv2.adaptiveThreshold(img_gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+                barcodes = decode(img_adaptive)
+                if barcodes:
+                    search_detection_method = "Adaptive threshold"
+            
+            # Attempt 6: Try with different resolutions
             if not barcodes:
                 # Resize to different scales
-                for scale in [0.5, 1.5, 2.0]:
+                for scale in [0.5, 1.5, 2.0, 2.5]:
                     h, w = img_gray.shape
-                    img_resized = cv2.resize(img_gray, (int(w*scale), int(h*scale)))
-                    barcodes = decode(img_resized)
+                    new_h, new_w = int(h*scale), int(w*scale)
+                    if 50 < new_h < 2000 and 50 < new_w < 2000:
+                        img_resized = cv2.resize(img_gray, (new_w, new_h))
+                        barcodes = decode(img_resized)
+                        if barcodes:
+                            search_detection_method = f"Scaling ({scale}x)"
+                            break
+            
+            # Attempt 7: Try with slight rotation compensation
+            if not barcodes:
+                for angle in [-5, 5, -10, 10]:
+                    center = (img_gray.shape[1]//2, img_gray.shape[0]//2)
+                    rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+                    img_rotated = cv2.warpAffine(img_gray, rotation_matrix, (img_gray.shape[1], img_gray.shape[0]))
+                    barcodes = decode(img_rotated)
                     if barcodes:
+                        search_detection_method = f"Rotation ({angle}°)"
                         break
             
             # Display the captured image for debugging
@@ -273,6 +346,8 @@ with tab2:
                     barcode_type = barcode.type
                     st.session_state['inventory_search_barcode'] = barcode_data
                     st.success(f"✅ {barcode_type} detected: {barcode_data}")
+                    if search_detection_method:
+                        st.info(f"🔍 Detection method: {search_detection_method}")
                     break  # Use the first barcode found
             else:
                 st.warning("❌ No barcode detected. Try:")
@@ -282,6 +357,7 @@ with tab2:
                 - Make sure the entire barcode/QR code is visible
                 - Try different distances from the code
                 - Ensure the barcode has good contrast
+                - Use standard barcode formats (QR, CODE128, CODE39, EAN13)
                 """)
                 st.warning("Or use text search instead.")
         

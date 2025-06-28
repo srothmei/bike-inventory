@@ -12,6 +12,7 @@ from pathlib import Path
 from pyzbar.pyzbar import decode
 from db import InventoryDB
 from config import Config
+from barcode_utils import enhanced_barcode_detection, analyze_image_quality
 
 # Initialize directory structure
 Config.init_dirs()
@@ -77,77 +78,73 @@ with tab1:
     with col2:
         st.subheader("📊 Scan Barcode")
         
-        # Use simplified camera input for barcode scanning
-        barcode_camera = st.camera_input("Scan barcode with camera", key="barcode_camera")
-        if barcode_camera is not None:
-            # Convert the camera input to OpenCV format
-            image = Image.open(barcode_camera)
-            img_array = np.array(image)
-            img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+        # Provide multiple input methods for better iPhone compatibility
+        barcode_input_method = st.radio(
+            "Choose input method:",
+            ["📱 Upload Photo (Recommended for iPhone)", "📷 Use Camera (Basic)"],
+            help="For iPhone users: Use 'Upload Photo' for better macro focus and image quality"
+        )
+        
+        image_to_process = None
+        
+        if barcode_input_method == "📱 Upload Photo (Recommended for iPhone)":
+            st.info("💡 **iPhone Users:** Take a photo with your camera app first, then upload it here for better macro focus and quality!")
             
-            # Enhanced barcode detection with multiple attempts
-            barcodes = []
-            detection_method = ""
+            # File uploader for better image quality
+            uploaded_barcode = st.file_uploader(
+                "Upload barcode image", 
+                type=["jpg", "jpeg", "png", "heic"],
+                key="barcode_upload",
+                help="Take a photo with your iPhone camera app, then upload it here. This allows for better macro focus and higher quality images."
+            )
             
-            # Attempt 1: Try with original image
-            barcodes = decode(img_bgr)
-            if barcodes:
-                detection_method = "Original image"
+            if uploaded_barcode is not None:
+                try:
+                    image_to_process = Image.open(uploaded_barcode)
+                    st.success("✅ Image uploaded successfully!")
+                except Exception as e:
+                    st.error(f"❌ Error loading image: {e}")
+        
+        else:  # Camera input
+            st.warning("⚠️ **Note:** Browser camera may not support macro focus. For best results with small barcodes, use 'Upload Photo' instead.")
             
-            # Attempt 2: Try with grayscale conversion
-            if not barcodes:
-                img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-                barcodes = decode(img_gray)
-                if barcodes:
-                    detection_method = "Grayscale conversion"
+            # Use simplified camera input for barcode scanning
+            barcode_camera = st.camera_input("Scan barcode with camera", key="barcode_camera")
+            if barcode_camera is not None:
+                image_to_process = Image.open(barcode_camera)
+        
+        # Process the image if we have one
+        if image_to_process is not None:
+            # Analyze image quality first
+            with st.expander("📊 Image Quality Analysis", expanded=False):
+                quality_info = analyze_image_quality(image_to_process)
+                st.write(f"**Image size:** {quality_info['size']}")
+                st.write(f"**Brightness:** {quality_info['mean_brightness']:.1f}")
+                st.write(f"**Contrast:** {quality_info['contrast']}")
+                st.write(f"**Sharpness:** {quality_info['sharpness']:.1f}")
+                
+                if quality_info['recommendations']:
+                    st.warning("**Recommendations for better detection:**")
+                    for rec in quality_info['recommendations']:
+                        st.write(f"• {rec}")
+                else:
+                    st.success("📊 Image quality looks good for barcode detection!")
             
-            # Attempt 3: Try with image enhancement (increase contrast)
-            if not barcodes:
-                img_enhanced = cv2.convertScaleAbs(img_gray, alpha=1.5, beta=20)
-                barcodes = decode(img_enhanced)
-                if barcodes:
-                    detection_method = "Enhanced contrast"
+            # Use enhanced barcode detection
+            st.info("🔍 Running enhanced barcode detection...")
             
-            # Attempt 4: Try with binary threshold
-            if not barcodes:
-                _, img_binary = cv2.threshold(img_gray, 127, 255, cv2.THRESH_BINARY)
-                barcodes = decode(img_binary)
-                if barcodes:
-                    detection_method = "Binary threshold"
+            with st.spinner("Processing image with multiple detection methods..."):
+                barcodes, detection_method, _ = enhanced_barcode_detection(image_to_process, debug=False)
             
-            # Attempt 5: Try with adaptive threshold
-            if not barcodes:
-                img_adaptive = cv2.adaptiveThreshold(img_gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-                barcodes = decode(img_adaptive)
-                if barcodes:
-                    detection_method = "Adaptive threshold"
-            
-            # Attempt 6: Try with different resolutions
-            if not barcodes:
-                # Resize to different scales
-                for scale in [0.5, 1.5, 2.0, 2.5]:
-                    h, w = img_gray.shape
-                    new_h, new_w = int(h*scale), int(w*scale)
-                    if 50 < new_h < 2000 and 50 < new_w < 2000:
-                        img_resized = cv2.resize(img_gray, (new_w, new_h))
-                        barcodes = decode(img_resized)
-                        if barcodes:
-                            detection_method = f"Scaling ({scale}x)"
-                            break
-            
-            # Attempt 7: Try with slight rotation compensation
-            if not barcodes:
-                for angle in [-5, 5, -10, 10]:
-                    center = (img_gray.shape[1]//2, img_gray.shape[0]//2)
-                    rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
-                    img_rotated = cv2.warpAffine(img_gray, rotation_matrix, (img_gray.shape[1], img_gray.shape[0]))
-                    barcodes = decode(img_rotated)
-                    if barcodes:
-                        detection_method = f"Rotation ({angle}°)"
-                        break
+            # Convert image to display format
+            img_array = np.array(image_to_process)
+            if len(img_array.shape) == 3:
+                img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+            else:
+                img_bgr = img_array
             
             # Display the captured image for debugging
-            st.image(img_bgr, caption="Captured Image for Barcode Scan", channels="BGR", width=300)
+            st.image(img_bgr, caption="Image for Barcode Scan", channels="BGR", width=300)
             
             if barcodes:
                 for barcode in barcodes:
@@ -155,20 +152,52 @@ with tab1:
                     barcode_type = barcode.type
                     st.session_state['scanned_barcode'] = barcode_data
                     st.success(f"✅ {barcode_type} detected: {barcode_data}")
-                    if detection_method:
-                        st.info(f"🔍 Detection method: {detection_method}")
+                    st.info(f"🔍 Detection method: {detection_method}")
+                    
+                    # Show barcode location if available
+                    if hasattr(barcode, 'rect'):
+                        st.info(f"📍 Barcode location: x={barcode.rect.left}, y={barcode.rect.top}, "
+                               f"width={barcode.rect.width}, height={barcode.rect.height}")
                     break  # Use the first barcode found
             else:
-                st.warning("❌ No barcode detected. Try:")
-                st.info("""
-                - Ensure good lighting
-                - Hold the camera steady  
-                - Make sure the entire barcode/QR code is visible
-                - Try different distances from the code
-                - Ensure the barcode has good contrast
-                - Use standard barcode formats (QR, CODE128, CODE39, EAN13)
-                """)
-                st.warning("Or enter the barcode manually below.")
+                st.error("❌ No barcode detected with any method.")
+                
+                # Provide specific guidance for iPhone users
+                if barcode_input_method == "📱 Upload Photo (Recommended for iPhone)":
+                    st.warning("**📱 iPhone Photography Tips:**")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write("**📸 Camera Settings:**")
+                        st.write("• Enable macro mode if available")
+                        st.write("• Tap to focus on the barcode")
+                        st.write("• Use good lighting")
+                        st.write("• Hold steady while focusing")
+                    
+                    with col2:
+                        st.write("**🎯 Positioning:**")
+                        st.write("• Fill frame with barcode")
+                        st.write("• Keep barcode flat/straight")
+                        st.write("• Avoid shadows and glare")
+                        st.write("• Try different distances")
+                else:
+                    st.warning("**Try the following:**")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write("**📸 Camera technique:**")
+                        st.write("• Hold camera steady")
+                        st.write("• Ensure good focus")
+                        st.write("• Fill frame with barcode")
+                        st.write("• Try different distances")
+                    
+                    with col2:
+                        st.write("**💡 Better option:**")
+                        st.write("• Switch to 'Upload Photo'")
+                        st.write("• Take photo with camera app")
+                        st.write("• Use macro focus if available")
+                        st.write("• Upload the saved photo")
+                
+                st.info("**📊 Supported formats:** QR codes, CODE128, CODE39, EAN13, UPC-A, DATA_MATRIX")
+                st.warning("**Or enter the barcode manually below.**")
         
         # Manual barcode entry
         st.info("📊 Or enter the barcode manually:")
@@ -268,77 +297,58 @@ with tab2:
         if 'inventory_search_barcode' not in st.session_state:
             st.session_state['inventory_search_barcode'] = None
         
-        # Use simplified camera input for inventory barcode scanning
-        inventory_barcode_camera = st.camera_input("Scan barcode to search inventory", key="inventory_barcode_camera")
-        if inventory_barcode_camera is not None:
-            # Convert the camera input to OpenCV format
-            image = Image.open(inventory_barcode_camera)
-            img_array = np.array(image)
-            img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+        # Provide multiple input methods for inventory search
+        search_input_method = st.radio(
+            "Choose search input method:",
+            ["📱 Upload Barcode Photo", "📷 Use Camera"],
+            key="search_input_method",
+            help="For iPhone users: Use 'Upload Photo' for better macro focus"
+        )
+        
+        search_image_to_process = None
+        
+        if search_input_method == "📱 Upload Barcode Photo":
+            st.info("💡 **iPhone Users:** Take a focused photo with your camera app, then upload it here!")
             
-            # Enhanced barcode detection with multiple attempts
-            barcodes = []
-            search_detection_method = ""
+            # File uploader for inventory search
+            uploaded_search_barcode = st.file_uploader(
+                "Upload barcode image for search", 
+                type=["jpg", "jpeg", "png", "heic"],
+                key="search_barcode_upload",
+                help="Upload a clear photo of the barcode to search for in inventory"
+            )
             
-            # Attempt 1: Try with original image
-            barcodes = decode(img_bgr)
-            if barcodes:
-                search_detection_method = "Original image"
+            if uploaded_search_barcode is not None:
+                try:
+                    search_image_to_process = Image.open(uploaded_search_barcode)
+                    st.success("✅ Search image uploaded successfully!")
+                except Exception as e:
+                    st.error(f"❌ Error loading search image: {e}")
+        
+        else:  # Camera input for search
+            st.warning("⚠️ **Note:** For small barcodes, consider using 'Upload Photo' for better focus.")
             
-            # Attempt 2: Try with grayscale conversion
-            if not barcodes:
-                img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-                barcodes = decode(img_gray)
-                if barcodes:
-                    search_detection_method = "Grayscale conversion"
+            inventory_barcode_camera = st.camera_input("Scan barcode to search inventory", key="inventory_barcode_camera")
+            if inventory_barcode_camera is not None:
+                search_image_to_process = Image.open(inventory_barcode_camera)
+        
+        # Process search image if available
+        if search_image_to_process is not None:
+            # Use enhanced barcode detection
+            st.info("🔍 Searching for barcodes in image...")
             
-            # Attempt 3: Try with image enhancement (increase contrast)
-            if not barcodes:
-                img_enhanced = cv2.convertScaleAbs(img_gray, alpha=1.5, beta=20)
-                barcodes = decode(img_enhanced)
-                if barcodes:
-                    search_detection_method = "Enhanced contrast"
+            with st.spinner("Processing image with enhanced detection..."):
+                barcodes, search_detection_method, _ = enhanced_barcode_detection(search_image_to_process, debug=False)
             
-            # Attempt 4: Try with binary threshold
-            if not barcodes:
-                _, img_binary = cv2.threshold(img_gray, 127, 255, cv2.THRESH_BINARY)
-                barcodes = decode(img_binary)
-                if barcodes:
-                    search_detection_method = "Binary threshold"
-            
-            # Attempt 5: Try with adaptive threshold
-            if not barcodes:
-                img_adaptive = cv2.adaptiveThreshold(img_gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-                barcodes = decode(img_adaptive)
-                if barcodes:
-                    search_detection_method = "Adaptive threshold"
-            
-            # Attempt 6: Try with different resolutions
-            if not barcodes:
-                # Resize to different scales
-                for scale in [0.5, 1.5, 2.0, 2.5]:
-                    h, w = img_gray.shape
-                    new_h, new_w = int(h*scale), int(w*scale)
-                    if 50 < new_h < 2000 and 50 < new_w < 2000:
-                        img_resized = cv2.resize(img_gray, (new_w, new_h))
-                        barcodes = decode(img_resized)
-                        if barcodes:
-                            search_detection_method = f"Scaling ({scale}x)"
-                            break
-            
-            # Attempt 7: Try with slight rotation compensation
-            if not barcodes:
-                for angle in [-5, 5, -10, 10]:
-                    center = (img_gray.shape[1]//2, img_gray.shape[0]//2)
-                    rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
-                    img_rotated = cv2.warpAffine(img_gray, rotation_matrix, (img_gray.shape[1], img_gray.shape[0]))
-                    barcodes = decode(img_rotated)
-                    if barcodes:
-                        search_detection_method = f"Rotation ({angle}°)"
-                        break
+            # Convert image to display format
+            img_array = np.array(search_image_to_process)
+            if len(img_array.shape) == 3:
+                img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+            else:
+                img_bgr = img_array
             
             # Display the captured image for debugging
-            st.image(img_bgr, caption="Captured Image for Barcode Search", channels="BGR", width=300)
+            st.image(img_bgr, caption="Image for Barcode Search", channels="BGR", width=300)
             
             if barcodes:
                 for barcode in barcodes:
@@ -346,20 +356,18 @@ with tab2:
                     barcode_type = barcode.type
                     st.session_state['inventory_search_barcode'] = barcode_data
                     st.success(f"✅ {barcode_type} detected: {barcode_data}")
-                    if search_detection_method:
-                        st.info(f"🔍 Detection method: {search_detection_method}")
+                    st.info(f"🔍 Detection method: {search_detection_method}")
                     break  # Use the first barcode found
             else:
-                st.warning("❌ No barcode detected. Try:")
-                st.info("""
-                - Ensure good lighting
-                - Hold the camera steady  
-                - Make sure the entire barcode/QR code is visible
-                - Try different distances from the code
-                - Ensure the barcode has good contrast
-                - Use standard barcode formats (QR, CODE128, CODE39, EAN13)
-                """)
-                st.warning("Or use text search instead.")
+                st.error("❌ No barcode detected with enhanced detection.")
+                if search_input_method == "📱 Upload Barcode Photo":
+                    st.warning("**📱 Try these iPhone photography tips:**")
+                    st.write("• Enable macro mode for small barcodes")
+                    st.write("• Tap to focus directly on the barcode")
+                    st.write("• Ensure bright, even lighting")
+                    st.write("• Fill the frame with the barcode")
+                else:
+                    st.warning("**Try switching to 'Upload Photo' for better results with small barcodes.**")
         
         # Display detected barcode
         if st.session_state['inventory_search_barcode']:

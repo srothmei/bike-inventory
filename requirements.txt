@@ -1,6 +1,7 @@
 streamlit
 streamlit-webrtc
 Pillow
+pillow-heif
 opencv-python-headless
 pyzbar
 streamlit-image-coordinates

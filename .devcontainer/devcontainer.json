@@ -1,0 +1,25 @@
+{
+  "name": "Bike Inventory Development",
+  "dockerFile": "Dockerfile",
+  "forwardPorts": [3000, 4000, 443],
+  "postCreateCommand": "npm install",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.vscode-typescript-next",
+        "bradlc.vscode-tailwindcss",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-json",
+        "formulahendry.auto-rename-tag",
+        "christian-kohler.path-intellisense"
+      ],
+      "settings": {
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "mounts": [
+    "source=${localWorkspaceFolder}/example_data,target=/workspace/example_data,type=bind"
+  ],
+  "remoteUser": "vscode"
+}

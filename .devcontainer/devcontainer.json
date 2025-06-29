@@ -1,8 +1,11 @@
 {
   "name": "Bike Inventory Development",
-  "dockerFile": "Dockerfile",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
   "forwardPorts": [3000, 4000, 443],
-  "postCreateCommand": "npm install",
+  "postCreateCommand": "echo 'DevContainer ready! Use test-barcodes to test barcode detection' && test-barcodes",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -19,7 +22,7 @@
     }
   },
   "mounts": [
-    "source=${localWorkspaceFolder}/example_data,target=/workspace/example_data,type=bind"
+    "source=${localWorkspaceFolder},target=/workspace,type=bind"
   ],
   "remoteUser": "vscode"
 }

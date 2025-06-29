@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { BrowserMultiFormatReader, BrowserBarcodeReader } from '@zxing/browser';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 import { Button, Typography, Box, TextField, MenuItem, Select } from '@mui/material';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://localhost:4000';
@@ -28,7 +28,7 @@ export default function BarcodeScanner() {
   };
 
   const scanImage = async (file) => {
-    const codeReader = new BrowserBarcodeReader();
+    const codeReader = new BrowserMultiFormatReader();
     const img = document.createElement('img');
     img.src = URL.createObjectURL(file);
     await new Promise(res => img.onload = res);

@@ -25,17 +25,17 @@ IMAGE_DIR = Config.IMAGE_DIR
 
 # iPhone Macro Camera Configuration
 def get_iphone_camera_constraints():
-    """Get camera constraints optimized for iPhone macro mode"""
+    """Return camera constraints for iPhone macro mode."""
+    # iPhone macro mode: high resolution, environment camera, no audio
     return {
         "video": {
-            "width": {"min": 640, "ideal": 1280, "max": 1920},
-            "height": {"min": 480, "ideal": 720, "max": 1080},
-            "facingMode": "environment",  # Back camera
+            "width": {"min": 640, "ideal": 1920, "max": 4032},
+            "height": {"min": 480, "ideal": 1440, "max": 3024},
+            "facingMode": {"exact": "environment"},
             "focusMode": "continuous",
-            "focusDistance": {"min": 0.1, "ideal": 0.2, "max": 0.3},  # Macro focus
-            "zoom": {"min": 1.0, "ideal": 2.0, "max": 3.0},  # Digital zoom for macro
             "aspectRatio": {"ideal": 4/3},
-            "frameRate": {"ideal": 30},
+            "frameRate": {"ideal": 30, "max": 60},
+            # iPhone macro: get as close as possible
         },
         "audio": False
     }
@@ -938,3 +938,17 @@ if st.sidebar.button("Clear All Inventory Data"):
 
 # iPhone Macro Camera Configuration
 def get_iphone_camera_constraints():
+    """Return camera constraints for iPhone macro mode."""
+    # iPhone macro mode: high resolution, environment camera, no audio
+    return {
+        "video": {
+            "width": {"min": 640, "ideal": 1920, "max": 4032},
+            "height": {"min": 480, "ideal": 1440, "max": 3024},
+            "facingMode": {"exact": "environment"},
+            "focusMode": "continuous",
+            "aspectRatio": {"ideal": 4/3},
+            "frameRate": {"ideal": 30, "max": 60},
+            # iPhone macro: get as close as possible
+        },
+        "audio": False
+    }

@@ -113,11 +113,9 @@ class MacroCameraProcessor:
         return av.VideoFrame.from_ndarray(img, format="bgr24")
 
 def iphone_macro_camera_interface():
-    """Advanced camera interface optimized for iPhone macro mode"""
-    
+    """Advanced camera interface optimized for iPhone macro mode (auto start/stop detection and stream)"""
     st.subheader("📱 iPhone Macro Camera")
     st.info("🔍 **Macro Mode Enabled**: This camera interface is optimized for iPhone macro photography")
-    
     # Device-specific instructions
     col1, col2 = st.columns(2)
     with col1:
@@ -126,31 +124,26 @@ def iphone_macro_camera_interface():
         st.write("• Get within 2-10cm of barcode")
         st.write("• Align barcode with green box")
         st.write("• Hold steady for auto-focus")
-    
     with col2:
         st.write("**🎯 Positioning Tips:**")
         st.write("• Fill the green box with barcode")
         st.write("• Ensure good lighting")
         st.write("• Keep barcode flat and straight")
         st.write("• Wait for focus confirmation")
-    
     # Camera constraints for different devices
     device_type = st.selectbox(
         "Select your device type:",
         ["iPhone (iOS 13+)", "Android", "Desktop/Other"],
         key="device_type"
     )
-    
     if device_type == "iPhone (iOS 13+)":
         camera_constraints = get_iphone_camera_constraints()
     elif device_type == "Android":
         camera_constraints = get_android_camera_constraints()
     else:
         camera_constraints = {"video": True, "audio": False}
-    
     # Initialize camera processor
     processor = MacroCameraProcessor()
-    
     # WebRTC streamer with macro optimizations
     webrtc_ctx = webrtc_streamer(
         key="macro_barcode_scanner",
@@ -162,30 +155,9 @@ def iphone_macro_camera_interface():
         media_stream_constraints=camera_constraints,
         async_processing=True,
     )
-    
-    # Control buttons
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        if st.button("📸 Capture Barcode", key="capture_macro"):
-            if webrtc_ctx.video_processor:
-                webrtc_ctx.video_processor.detection_enabled = True
-                st.success("🔍 Barcode detection active!")
-    
-    with col2:
-        if st.button("⏸️ Pause Detection", key="pause_macro"):
-            if webrtc_ctx.video_processor:
-                webrtc_ctx.video_processor.detection_enabled = False
-                st.info("⏸️ Detection paused")
-    
-    with col3:
-        if st.button("🔄 Reset", key="reset_macro"):
-            if webrtc_ctx.video_processor:
-                # Clear the queue
-                while not webrtc_ctx.video_processor.result_queue.empty():
-                    webrtc_ctx.video_processor.result_queue.get()
-                st.info("🔄 Reset complete")
-    
+    # Automatically enable detection when stream is active
+    if webrtc_ctx.state.playing and webrtc_ctx.video_processor:
+        webrtc_ctx.video_processor.detection_enabled = True
     # Check for barcode detection results
     if webrtc_ctx.video_processor:
         try:
@@ -194,31 +166,18 @@ def iphone_macro_camera_interface():
                 st.success(f"✅ Barcode detected: {result['barcode']}")
                 st.info(f"🔍 Detection method: {result['method']}")
                 st.session_state['scanned_barcode'] = result['barcode']
-                
-                # Auto-pause detection after successful scan
+                # Stop detection and stream after successful scan
                 webrtc_ctx.video_processor.detection_enabled = False
+                if hasattr(webrtc_ctx, 'stop'):
+                    webrtc_ctx.stop()
                 break
         except queue.Empty:
             pass
-    
     # Fallback for devices that don't support advanced constraints
     if not webrtc_ctx.state.playing:
         st.warning("⚠️ **Camera not active.** If you're having issues:")
         st.write("• Allow camera permissions when prompted") 
         st.write("• Try refreshing the page")
-        st.write("• Switch to 'Upload Photo' mode as fallback")
-        
-        # Provide traditional camera input as fallback
-        st.write("**📸 Fallback Camera:**")
-        fallback_camera = st.camera_input("Standard camera (no macro)", key="fallback_camera")
-        if fallback_camera is not None:
-            try:
-                image_to_process = Image.open(fallback_camera)
-                st.success("✅ Image captured!")
-                return image_to_process
-            except Exception as e:
-                st.error(f"❌ Error processing image: {e}")
-    
     return None
 
 st.set_page_config(page_title="Bike Inventory", layout="wide")

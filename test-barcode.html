@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Barcode Scanner Test</title>
+    <script src="https://unpkg.com/@zxing/browser@latest/dist/index.min.js"></script>
+</head>
+<body>
+    <h1>Barcode Scanner Test</h1>
+    <input type="file" id="fileInput" accept="image/*" />
+    <br><br>
+    <img id="imagePreview" style="max-width: 400px; display: none;" />
+    <br><br>
+    <div id="result"></div>
+    <div id="debug"></div>
+
+    <script>
+        const codeReader = new ZXing.BrowserMultiFormatReader();
+        const fileInput = document.getElementById('fileInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const result = document.getElementById('result');
+        const debug = document.getElementById('debug');
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            debug.innerHTML = `<p>Testing file: ${file.name} (${file.type}, ${file.size} bytes)</p>`;
+            
+            // Show image preview
+            const imageUrl = URL.createObjectURL(file);
+            imagePreview.src = imageUrl;
+            imagePreview.style.display = 'block';
+
+            try {
+                // Method 1: Direct image decode
+                debug.innerHTML += '<p>Trying direct image decode...</p>';
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                await new Promise(resolve => img.onload = resolve);
+                
+                try {
+                    const scanResult = await codeReader.decodeFromImageElement(img);
+                    result.innerHTML = `<h2>✅ SUCCESS!</h2><p>Barcode found: <strong>${scanResult.getText()}</strong></p><p>Format: ${scanResult.getBarcodeFormat()}</p>`;
+                    URL.revokeObjectURL(imageUrl);
+                    return;
+                } catch (err1) {
+                    debug.innerHTML += `<p>Method 1 failed: ${err1.message}</p>`;
+                }
+
+                // Method 2: Canvas decode
+                debug.innerHTML += '<p>Trying canvas decode...</p>';
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                
+                try {
+                    const scanResult = await codeReader.decodeFromCanvas(canvas);
+                    result.innerHTML = `<h2>✅ SUCCESS!</h2><p>Barcode found: <strong>${scanResult.getText()}</strong></p><p>Format: ${scanResult.getBarcodeFormat()}</p>`;
+                    URL.revokeObjectURL(imageUrl);
+                    return;
+                } catch (err2) {
+                    debug.innerHTML += `<p>Method 2 failed: ${err2.message}</p>`;
+                }
+
+                // Method 3: ImageData decode
+                debug.innerHTML += '<p>Trying ImageData decode...</p>';
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                
+                try {
+                    const scanResult = await codeReader.decodeFromImageData(imageData);
+                    result.innerHTML = `<h2>✅ SUCCESS!</h2><p>Barcode found: <strong>${scanResult.getText()}</strong></p><p>Format: ${scanResult.getBarcodeFormat()}</p>`;
+                    URL.revokeObjectURL(imageUrl);
+                    return;
+                } catch (err3) {
+                    debug.innerHTML += `<p>Method 3 failed: ${err3.message}</p>`;
+                }
+
+                result.innerHTML = '<h2>❌ No barcode detected</h2><p>All methods failed. The image might not contain a readable barcode.</p>';
+                URL.revokeObjectURL(imageUrl);
+
+            } catch (error) {
+                result.innerHTML = `<h2>❌ Error</h2><p>${error.message}</p>`;
+                debug.innerHTML += `<p>General error: ${error.message}</p>`;
+                URL.revokeObjectURL(imageUrl);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -16,8 +16,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create vscode user with sudo privileges
-RUN groupadd --gid 1000 vscode \
-    && useradd --uid 1000 --gid vscode --shell /bin/bash --create-home vscode \
+RUN groupadd --gid 1000 vscode || true \
+    && useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home vscode \
     && echo vscode ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/vscode \
     && chmod 0440 /etc/sudoers.d/vscode
 
@@ -60,4 +60,5 @@ USER vscode
 WORKDIR /workspace
 
 # Set up user environment
-RUN echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.bashrc
+USER vscode
+RUN echo 'export PATH="/usr/local/bin:$PATH"' >> /home/vscode/.bashrc

@@ -1,2 +1,6 @@
 *.pem
 *.db
+.DS_Store
+example_images/
+*.HEIC
+*.JPG

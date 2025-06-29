@@ -37,15 +37,53 @@ export default function BarcodeScanner() {
 
   const scanImage = async (file) => {
     const codeReader = new BrowserMultiFormatReader();
-    const img = document.createElement('img');
-    img.src = URL.createObjectURL(file);
-    await new Promise(res => img.onload = res);
+    
+    // Try multiple approaches for better barcode detection
     try {
-      const result = await codeReader.decodeFromImageElement(img);
-      setGtin(result.getText());
-    } catch (err) {
+      // Method 1: Direct file decode
+      try {
+        const result = await codeReader.decodeFromImageUrl(URL.createObjectURL(file));
+        setGtin(result.getText());
+        return;
+      } catch (err1) {
+        console.log('Method 1 failed:', err1);
+      }
+
+      // Method 2: Image element decode
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(file);
+      await new Promise(res => img.onload = res);
+      
+      try {
+        const result = await codeReader.decodeFromImageElement(img);
+        setGtin(result.getText());
+        return;
+      } catch (err2) {
+        console.log('Method 2 failed:', err2);
+      }
+
+      // Method 3: Canvas-based decode with image processing
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      
+      try {
+        const result = await codeReader.decodeFromCanvas(canvas);
+        setGtin(result.getText());
+        return;
+      } catch (err3) {
+        console.log('Method 3 failed:', err3);
+      }
+
+      // If all methods fail
       setGtin('');
-      alert('No barcode found in image.');
+      alert('No barcode found in image. Please try a clearer image or check if the barcode is visible.');
+    } catch (err) {
+      console.error('Barcode scanning error:', err);
+      setGtin('');
+      alert('Error scanning barcode: ' + err.message);
     }
   };
 

@@ -66,31 +66,37 @@ class MacroCameraProcessor:
     
     def recv(self, frame):
         img = frame.to_ndarray(format="bgr24")
-        
-        # Only process for barcode detection every few seconds to avoid overload
         current_time = time.time()
+        # Debug: print detection state to Streamlit
+        try:
+            import streamlit as st
+            st.write(f"[DEBUG] Detection enabled: {self.detection_enabled}, Time: {current_time}")
+        except Exception:
+            pass
+        # Only process for barcode detection every few seconds to avoid overload
         if (self.detection_enabled and 
             current_time - self.last_detection_time > self.detection_cooldown):
-            
             self.last_detection_time = current_time
-            
-            # Convert to PIL Image for barcode detection
             img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             pil_img = Image.fromarray(img_rgb)
-            
-            # Quick barcode detection (non-blocking)
             try:
-                barcodes, method, _ = enhanced_barcode_detection(pil_img, debug=False)
-                
+                barcodes, method, _ = enhanced_barcode_detection(pil_img, debug=True)
                 if barcodes:
                     barcode_data = barcodes[0].data.decode('utf-8', errors='ignore')
+                    try:
+                        st.write(f"[DEBUG] Barcode detected: {barcode_data} (method: {method})")
+                    except Exception:
+                        pass
                     self.result_queue.put({
                         'barcode': barcode_data,
                         'method': method,
                         'timestamp': current_time
                     })
             except Exception as e:
-                pass  # Silently continue if detection fails
+                try:
+                    st.write(f"[DEBUG] Detection error: {e}")
+                except Exception:
+                    pass
         
         # Add visual indicators for macro mode
         # Draw focus area rectangle

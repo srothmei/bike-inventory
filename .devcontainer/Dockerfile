@@ -22,16 +22,6 @@ RUN npm install -g nodemon concurrently
 # Set working directory
 WORKDIR /workspace
 
-# Copy package files for dependency installation
-COPY package*.json ./
-COPY frontend/package*.json ./frontend/
-COPY backend/package*.json ./backend/
-
-# Install dependencies
-RUN npm install
-RUN cd frontend && npm install
-RUN cd backend && npm install
-
 # Install Python barcode detection packages
 RUN pip3 install --break-system-packages pillow pyzbar opencv-python
 
@@ -69,7 +59,7 @@ fi\n\
 ' > /usr/local/bin/analyze-image && chmod +x /usr/local/bin/analyze-image
 
 # Install Python barcode detection as backup
-RUN pip3 install --break-system-packages pillow pyzbar opencv-python
+# RUN pip3 install --break-system-packages pillow pyzbar opencv-python
 
 # Create Python barcode test script
 RUN echo '#!/usr/bin/env python3\n\

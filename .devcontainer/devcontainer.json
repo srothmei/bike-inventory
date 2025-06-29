@@ -1,11 +1,10 @@
 {
   "name": "Bike Inventory Development",
   "build": {
-    "dockerfile": "Dockerfile",
-    "context": ".."
+    "dockerfile": "Dockerfile"
   },
   "forwardPorts": [3000, 4000, 443],
-  "postCreateCommand": "echo 'DevContainer ready! Use test-barcodes to test barcode detection' && test-barcodes",
+  "postCreateCommand": "npm install && cd frontend && npm install && cd ../backend && npm install && echo 'DevContainer ready! Use test-barcodes to test barcode detection'",
   "customizations": {
     "vscode": {
       "extensions": [

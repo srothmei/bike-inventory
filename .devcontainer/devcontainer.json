@@ -1,10 +1,11 @@
 {
-  "name": "Bike Inventory Development",
+  "name": "Bike Inventory Dev Environment",
   "build": {
-    "dockerfile": "Dockerfile"
+    "dockerfile": "./Dockerfile",
+    "context": "."
   },
   "forwardPorts": [3000, 4000, 443],
-  "postCreateCommand": "npm install && cd frontend && npm install && cd ../backend && npm install && echo 'DevContainer ready! Use test-barcodes to test barcode detection'",
+  "postCreateCommand": "echo 'Setting up development environment...' && npm install && cd frontend && npm install && cd ../backend && npm install && echo 'DevContainer ready! Run test-barcodes to test barcode detection on example images.'",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -16,12 +17,11 @@
         "christian-kohler.path-intellisense"
       ],
       "settings": {
-        "editor.formatOnSave": true
+        "editor.formatOnSave": true,
+        "terminal.integrated.defaultProfile.linux": "bash"
       }
     }
   },
-  "mounts": [
-    "source=${localWorkspaceFolder},target=/workspace,type=bind"
-  ],
+  "workspaceFolder": "/workspace",
   "remoteUser": "vscode"
 }

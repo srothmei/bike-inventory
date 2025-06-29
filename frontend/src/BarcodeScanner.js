@@ -19,9 +19,17 @@ export default function BarcodeScanner() {
     setScanning(true);
     const codeReader = new BrowserMultiFormatReader();
     try {
-      const result = await codeReader.decodeOnceFromVideoDevice(undefined, videoRef.current);
-      setGtin(result.text);
-      setScanning(false);
+      await codeReader.decodeFromVideoDevice(
+        undefined,
+        videoRef.current,
+        (result, err) => {
+          if (result) {
+            setGtin(result.getText());
+            setScanning(false);
+            codeReader.reset();
+          }
+        }
+      );
     } catch (err) {
       setScanning(false);
     }

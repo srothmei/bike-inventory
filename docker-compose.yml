@@ -1,5 +1,5 @@
 services:
-  # Main bike-inventory service (same as in docker-compose.prod.yml)
+  # Main bike-inventory service
   bike-inventory:
     build:
       context: .

@@ -38,48 +38,74 @@ export default function BarcodeScanner() {
   const scanImage = async (file) => {
     const codeReader = new BrowserMultiFormatReader();
     
-    // Try multiple approaches for better barcode detection
     try {
-      // Method 1: Direct file decode
+      console.log('Starting barcode scan for file:', file.name, file.type);
+      
+      // Create image element and wait for it to load
+      const img = document.createElement('img');
+      const imageUrl = URL.createObjectURL(file);
+      img.src = imageUrl;
+      
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+      
+      console.log('Image loaded, dimensions:', img.width, 'x', img.height);
+
+      // Method 1: Try decodeFromImageElement
       try {
-        const result = await codeReader.decodeFromImageUrl(URL.createObjectURL(file));
+        console.log('Trying decodeFromImageElement...');
+        const result = await codeReader.decodeFromImageElement(img);
+        console.log('Success with decodeFromImageElement:', result.getText());
         setGtin(result.getText());
+        URL.revokeObjectURL(imageUrl);
         return;
       } catch (err1) {
-        console.log('Method 1 failed:', err1);
+        console.log('Method 1 (decodeFromImageElement) failed:', err1.message);
       }
 
-      // Method 2: Image element decode
-      const img = document.createElement('img');
-      img.src = URL.createObjectURL(file);
-      await new Promise(res => img.onload = res);
-      
+      // Method 2: Try with canvas
       try {
-        const result = await codeReader.decodeFromImageElement(img);
+        console.log('Trying canvas method...');
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        
+        const result = await codeReader.decodeFromCanvas(canvas);
+        console.log('Success with canvas method:', result.getText());
         setGtin(result.getText());
+        URL.revokeObjectURL(imageUrl);
         return;
       } catch (err2) {
-        console.log('Method 2 failed:', err2);
+        console.log('Method 2 (canvas) failed:', err2.message);
       }
 
-      // Method 3: Canvas-based decode with image processing
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-      
+      // Method 3: Try with ImageData
       try {
-        const result = await codeReader.decodeFromCanvas(canvas);
+        console.log('Trying ImageData method...');
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const result = await codeReader.decodeFromImageData(imageData);
+        console.log('Success with ImageData method:', result.getText());
         setGtin(result.getText());
+        URL.revokeObjectURL(imageUrl);
         return;
       } catch (err3) {
-        console.log('Method 3 failed:', err3);
+        console.log('Method 3 (ImageData) failed:', err3.message);
       }
 
-      // If all methods fail
+      // Clean up and show error
+      URL.revokeObjectURL(imageUrl);
       setGtin('');
-      alert('No barcode found in image. Please try a clearer image or check if the barcode is visible.');
+      alert('No barcode found in image. Please try a clearer image or check if the barcode is visible. Note: HEIC format may not be supported - try converting to JPG/PNG.');
     } catch (err) {
       console.error('Barcode scanning error:', err);
       setGtin('');
@@ -102,6 +128,16 @@ export default function BarcodeScanner() {
 
   const handleImage = e => {
     const file = e.target.files[0];
+    if (!file) return;
+    
+    // Check file type
+    const supportedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/webp'];
+    if (!supportedTypes.includes(file.type.toLowerCase())) {
+      alert('Unsupported file format. Please use JPG, PNG, GIF, BMP, or WebP. HEIC files are not supported by browsers.');
+      return;
+    }
+    
+    console.log('Processing file:', file.name, file.type, file.size, 'bytes');
     setImage(file);
     setImgPreview(URL.createObjectURL(file));
     scanImage(file);
@@ -116,7 +152,7 @@ export default function BarcodeScanner() {
       </Box>
       <Button variant="contained" component="label" sx={{ mb: 2 }}>
         Upload Image for Barcode
-        <input type="file" accept="image/*" hidden onChange={handleImage} />
+        <input type="file" accept="image/jpeg,image/jpg,image/png,image/gif,image/bmp,image/webp" hidden onChange={handleImage} />
       </Button>
       {imgPreview && <img src={imgPreview} alt="preview" style={{ maxWidth: 300, display: 'block', marginBottom: 8 }} />}
       <TextField label="GTIN" value={gtin} onChange={e => setGtin(e.target.value)} fullWidth sx={{ mb: 2 }} />

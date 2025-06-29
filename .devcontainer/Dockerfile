@@ -5,8 +5,7 @@ RUN apt-get update && apt-get install -y \
     zbar-tools \
     imagemagick \
     python3-pil \
-    python3-pyzbar \
-    python3-opencv \
+    python3-pip \
     libzbar0 \
     curl \
     git \
@@ -32,6 +31,9 @@ COPY backend/package*.json ./backend/
 RUN npm install
 RUN cd frontend && npm install
 RUN cd backend && npm install
+
+# Install Python barcode detection packages
+RUN pip3 install --break-system-packages pillow pyzbar opencv-python
 
 # Create a test script for barcode detection
 RUN echo '#!/bin/bash\n\

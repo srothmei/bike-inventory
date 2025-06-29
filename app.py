@@ -277,50 +277,9 @@ with tab1:
             
     with col2:
         st.subheader("📊 Scan Barcode")
-        
-        # Provide multiple input methods for better iPhone compatibility
-        barcode_input_method = st.radio(
-            "Choose input method:",
-            [
-                "📱 Upload Photo (Highest Quality)", 
-                "🔍 iPhone Macro Camera (Live Detection)",
-                "📷 Standard Camera (Basic)"
-            ],
-            help="iPhone users: Use 'iPhone Macro Camera' for live barcode detection with macro focus, or 'Upload Photo' for highest quality"
-        )
-        
-        image_to_process = None
-        
-        if barcode_input_method == "📱 Upload Photo (Highest Quality)":
-            st.info("💡 **iPhone Users:** Take a photo with your camera app first, then upload it here for better macro focus and quality!")
-            
-            # File uploader for better image quality
-            uploaded_barcode = st.file_uploader(
-                "Upload barcode image", 
-                type=["jpg", "jpeg", "png", "heic"],
-                key="barcode_upload",
-                help="Take a photo with your iPhone camera app, then upload it here. This allows for better macro focus and higher quality images."
-            )
-            
-            if uploaded_barcode is not None:
-                try:
-                    image_to_process = Image.open(uploaded_barcode)
-                    st.success("✅ Image uploaded successfully!")
-                except Exception as e:
-                    st.error(f"❌ Error loading image: {e}")
-        
-        elif barcode_input_method == "🔍 iPhone Macro Camera (Live Detection)":
-            # Use the new iPhone macro camera interface
-            image_to_process = iphone_macro_camera_interface()
-        
-        else:  # Standard Camera (Basic)
-            st.warning("⚠️ **Note:** Standard camera may not support macro focus. For best results with small barcodes, use 'iPhone Macro Camera' or 'Upload Photo'.")
-            
-            # Use simplified camera input for barcode scanning
-            barcode_camera = st.camera_input("Scan barcode with camera", key="barcode_camera")
-            if barcode_camera is not None:
-                image_to_process = Image.open(barcode_camera)
-        
+        # Only show live detection (iPhone Macro Camera)
+        st.info("Live barcode detection with iPhone Macro Camera is enabled.")
+        image_to_process = iphone_macro_camera_interface()
         # Process the image if we have one
         if image_to_process is not None:
             # Analyze image quality first
@@ -330,17 +289,14 @@ with tab1:
                 st.write(f"**Brightness:** {quality_info['mean_brightness']:.1f}")
                 st.write(f"**Contrast:** {quality_info['contrast']}")
                 st.write(f"**Sharpness:** {quality_info['sharpness']:.1f}")
-                
                 if quality_info['recommendations']:
                     st.warning("**Recommendations for better detection:**")
                     for rec in quality_info['recommendations']:
                         st.write(f"• {rec}")
                 else:
                     st.success("📊 Image quality looks good for barcode detection!")
-            
             # Use enhanced barcode detection
             st.info("🔍 Running enhanced barcode detection...")
-            
             with st.spinner("Processing image with multiple detection methods..."):
                 try:
                     barcodes, detection_method, _ = comprehensive_barcode_detection(image_to_process, debug=False)
@@ -348,17 +304,13 @@ with tab1:
                     st.error(f"❌ Error during barcode detection: {str(e)}")
                     barcodes = []
                     detection_method = "Error occurred"
-            
             # Convert image to display format
             img_array = np.array(image_to_process)
             if len(img_array.shape) == 3:
                 img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
             else:
                 img_bgr = img_array
-            
-            # Display the captured image for debugging
             st.image(img_bgr, caption="Image for Barcode Scan", channels="BGR", width=300)
-            
             if barcodes:
                 for barcode in barcodes:
                     barcode_data = barcode.data.decode('utf-8')
@@ -366,29 +318,22 @@ with tab1:
                     st.session_state['scanned_barcode'] = barcode_data
                     st.success(f"✅ {barcode_type} detected: {barcode_data}")
                     st.info(f"🔍 Detection method: {detection_method}")
-                    
-                    # Show barcode location if available
                     if hasattr(barcode, 'rect'):
                         st.info(f"📍 Barcode location: x={barcode.rect.left}, y={barcode.rect.top}, "
                                f"width={barcode.rect.width}, height={barcode.rect.height}")
                     break  # Use the first barcode found
             else:
                 st.error("❌ No barcode detected with any method.")
-                
-                # Analyze image quality and provide specific feedback
                 try:
                     quality_info = analyze_image_quality(image_to_process)
-                    
                     st.warning("**🔍 Image Analysis Results:**")
                     col1, col2 = st.columns(2)
-                    
                     with col1:
                         st.write("**📊 Image Metrics:**")
                         st.write(f"• Size: {quality_info['size'][1]}×{quality_info['size'][0]} pixels")
                         st.write(f"• Brightness: {quality_info['mean_brightness']:.1f}/255")
                         st.write(f"• Contrast: {quality_info['contrast']}/255")
                         st.write(f"• Sharpness: {quality_info['sharpness']:.1f}")
-                    
                     with col2:
                         st.write("**💡 Recommendations:**")
                         if quality_info['recommendations']:
@@ -398,7 +343,6 @@ with tab1:
                             st.write("• Image quality appears adequate")
                             st.write("• Barcode may not be present or readable")
                             st.write("• Try a different image or manual entry")
-                
                 except Exception as e:
                     st.warning(f"Could not analyze image quality: {str(e)}")
                 

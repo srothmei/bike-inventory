@@ -1,18 +1,20 @@
 import streamlit as st
 import cv2
-from PIL import Image
-import io
 import numpy as np
-import tempfile
+from PIL import Image
 import time
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
+import av
+import threading
+import queue
 import os
 import uuid
-import logging
+import tempfile
 from pathlib import Path
-from pyzbar.pyzbar import decode
+
 from db import InventoryDB
 from config import Config
-from barcode_utils import enhanced_barcode_detection, analyze_image_quality
+from barcode_utils import enhanced_barcode_detection, analyze_image_quality, comprehensive_barcode_detection
 
 # Initialize directory structure
 Config.init_dirs()
@@ -20,6 +22,204 @@ Config.init_dirs()
 # Use config for file paths
 STATIC_DIR = Config.STATIC_DIR
 IMAGE_DIR = Config.IMAGE_DIR
+
+# iPhone Macro Camera Configuration
+def get_iphone_camera_constraints():
+    """Get camera constraints optimized for iPhone macro mode"""
+    return {
+        "video": {
+            "width": {"min": 640, "ideal": 1280, "max": 1920},
+            "height": {"min": 480, "ideal": 720, "max": 1080},
+            "facingMode": "environment",  # Back camera
+            "focusMode": "continuous",
+            "focusDistance": {"min": 0.1, "ideal": 0.2, "max": 0.3},  # Macro focus
+            "zoom": {"min": 1.0, "ideal": 2.0, "max": 3.0},  # Digital zoom for macro
+            "aspectRatio": {"ideal": 4/3},
+            "frameRate": {"ideal": 30},
+        },
+        "audio": False
+    }
+
+def get_android_camera_constraints():
+    """Get camera constraints optimized for Android macro mode"""
+    return {
+        "video": {
+            "width": {"min": 640, "ideal": 1280, "max": 1920},
+            "height": {"min": 480, "ideal": 720, "max": 1080},
+            "facingMode": "environment",
+            "focusMode": "continuous",  
+            "focusDistance": {"min": 0.05, "ideal": 0.15, "max": 0.25},
+            "zoom": {"min": 1.0, "ideal": 1.5, "max": 2.5},
+            "aspectRatio": {"ideal": 16/9},
+        },
+        "audio": False
+    }
+
+class MacroCameraProcessor:
+    """Processor for handling macro camera stream with barcode detection"""
+    
+    def __init__(self):
+        self.result_queue = queue.Queue()
+        self.detection_enabled = True
+        self.last_detection_time = 0
+        self.detection_cooldown = 2.0  # seconds between detections
+    
+    def recv(self, frame):
+        img = frame.to_ndarray(format="bgr24")
+        
+        # Only process for barcode detection every few seconds to avoid overload
+        current_time = time.time()
+        if (self.detection_enabled and 
+            current_time - self.last_detection_time > self.detection_cooldown):
+            
+            self.last_detection_time = current_time
+            
+            # Convert to PIL Image for barcode detection
+            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            pil_img = Image.fromarray(img_rgb)
+            
+            # Quick barcode detection (non-blocking)
+            try:
+                barcodes, method, _ = enhanced_barcode_detection(pil_img, debug=False)
+                
+                if barcodes:
+                    barcode_data = barcodes[0].data.decode('utf-8', errors='ignore')
+                    self.result_queue.put({
+                        'barcode': barcode_data,
+                        'method': method,
+                        'timestamp': current_time
+                    })
+            except Exception as e:
+                pass  # Silently continue if detection fails
+        
+        # Add visual indicators for macro mode
+        # Draw focus area rectangle
+        h, w = img.shape[:2]
+        center_x, center_y = w // 2, h // 2
+        rect_size = min(w, h) // 3
+        
+        # Green rectangle for macro focus area
+        cv2.rectangle(img, 
+                     (center_x - rect_size//2, center_y - rect_size//2),
+                     (center_x + rect_size//2, center_y + rect_size//2),
+                     (0, 255, 0), 2)
+        
+        # Add text instructions
+        cv2.putText(img, "Position barcode in green box", 
+                   (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        cv2.putText(img, "Get close for macro focus", 
+                   (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        
+        return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+def iphone_macro_camera_interface():
+    """Advanced camera interface optimized for iPhone macro mode"""
+    
+    st.subheader("📱 iPhone Macro Camera")
+    st.info("🔍 **Macro Mode Enabled**: This camera interface is optimized for iPhone macro photography")
+    
+    # Device-specific instructions
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write("**📱 iPhone Instructions:**")
+        st.write("• Camera will auto-enable macro mode")
+        st.write("• Get within 2-10cm of barcode")
+        st.write("• Align barcode with green box")
+        st.write("• Hold steady for auto-focus")
+    
+    with col2:
+        st.write("**🎯 Positioning Tips:**")
+        st.write("• Fill the green box with barcode")
+        st.write("• Ensure good lighting")
+        st.write("• Keep barcode flat and straight")
+        st.write("• Wait for focus confirmation")
+    
+    # Camera constraints for different devices
+    device_type = st.selectbox(
+        "Select your device type:",
+        ["iPhone (iOS 13+)", "Android", "Desktop/Other"],
+        key="device_type"
+    )
+    
+    if device_type == "iPhone (iOS 13+)":
+        camera_constraints = get_iphone_camera_constraints()
+    elif device_type == "Android":
+        camera_constraints = get_android_camera_constraints()
+    else:
+        camera_constraints = {"video": True, "audio": False}
+    
+    # Initialize camera processor
+    processor = MacroCameraProcessor()
+    
+    # WebRTC streamer with macro optimizations
+    webrtc_ctx = webrtc_streamer(
+        key="macro_barcode_scanner",
+        mode=WebRtcMode.SENDRECV,
+        rtc_configuration=RTCConfiguration(
+            {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+        ),
+        video_processor_factory=lambda: processor,
+        media_stream_constraints=camera_constraints,
+        async_processing=True,
+    )
+    
+    # Control buttons
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("📸 Capture Barcode", key="capture_macro"):
+            if webrtc_ctx.video_processor:
+                webrtc_ctx.video_processor.detection_enabled = True
+                st.success("🔍 Barcode detection active!")
+    
+    with col2:
+        if st.button("⏸️ Pause Detection", key="pause_macro"):
+            if webrtc_ctx.video_processor:
+                webrtc_ctx.video_processor.detection_enabled = False
+                st.info("⏸️ Detection paused")
+    
+    with col3:
+        if st.button("🔄 Reset", key="reset_macro"):
+            if webrtc_ctx.video_processor:
+                # Clear the queue
+                while not webrtc_ctx.video_processor.result_queue.empty():
+                    webrtc_ctx.video_processor.result_queue.get()
+                st.info("🔄 Reset complete")
+    
+    # Check for barcode detection results
+    if webrtc_ctx.video_processor:
+        try:
+            while not webrtc_ctx.video_processor.result_queue.empty():
+                result = webrtc_ctx.video_processor.result_queue.get_nowait()
+                st.success(f"✅ Barcode detected: {result['barcode']}")
+                st.info(f"🔍 Detection method: {result['method']}")
+                st.session_state['scanned_barcode'] = result['barcode']
+                
+                # Auto-pause detection after successful scan
+                webrtc_ctx.video_processor.detection_enabled = False
+                break
+        except queue.Empty:
+            pass
+    
+    # Fallback for devices that don't support advanced constraints
+    if not webrtc_ctx.state.playing:
+        st.warning("⚠️ **Camera not active.** If you're having issues:")
+        st.write("• Allow camera permissions when prompted") 
+        st.write("• Try refreshing the page")
+        st.write("• Switch to 'Upload Photo' mode as fallback")
+        
+        # Provide traditional camera input as fallback
+        st.write("**📸 Fallback Camera:**")
+        fallback_camera = st.camera_input("Standard camera (no macro)", key="fallback_camera")
+        if fallback_camera is not None:
+            try:
+                image_to_process = Image.open(fallback_camera)
+                st.success("✅ Image captured!")
+                return image_to_process
+            except Exception as e:
+                st.error(f"❌ Error processing image: {e}")
+    
+    return None
 
 st.set_page_config(page_title="Bike Inventory", layout="wide")
 st.title("🚲 Bike Spare Parts Inventory")
@@ -81,13 +281,17 @@ with tab1:
         # Provide multiple input methods for better iPhone compatibility
         barcode_input_method = st.radio(
             "Choose input method:",
-            ["📱 Upload Photo (Recommended for iPhone)", "📷 Use Camera (Basic)"],
-            help="For iPhone users: Use 'Upload Photo' for better macro focus and image quality"
+            [
+                "📱 Upload Photo (Highest Quality)", 
+                "🔍 iPhone Macro Camera (Live Detection)",
+                "📷 Standard Camera (Basic)"
+            ],
+            help="iPhone users: Use 'iPhone Macro Camera' for live barcode detection with macro focus, or 'Upload Photo' for highest quality"
         )
         
         image_to_process = None
         
-        if barcode_input_method == "📱 Upload Photo (Recommended for iPhone)":
+        if barcode_input_method == "📱 Upload Photo (Highest Quality)":
             st.info("💡 **iPhone Users:** Take a photo with your camera app first, then upload it here for better macro focus and quality!")
             
             # File uploader for better image quality
@@ -105,8 +309,12 @@ with tab1:
                 except Exception as e:
                     st.error(f"❌ Error loading image: {e}")
         
-        else:  # Camera input
-            st.warning("⚠️ **Note:** Browser camera may not support macro focus. For best results with small barcodes, use 'Upload Photo' instead.")
+        elif barcode_input_method == "🔍 iPhone Macro Camera (Live Detection)":
+            # Use the new iPhone macro camera interface
+            image_to_process = iphone_macro_camera_interface()
+        
+        else:  # Standard Camera (Basic)
+            st.warning("⚠️ **Note:** Standard camera may not support macro focus. For best results with small barcodes, use 'iPhone Macro Camera' or 'Upload Photo'.")
             
             # Use simplified camera input for barcode scanning
             barcode_camera = st.camera_input("Scan barcode with camera", key="barcode_camera")
@@ -134,7 +342,12 @@ with tab1:
             st.info("🔍 Running enhanced barcode detection...")
             
             with st.spinner("Processing image with multiple detection methods..."):
-                barcodes, detection_method, _ = enhanced_barcode_detection(image_to_process, debug=False)
+                try:
+                    barcodes, detection_method, _ = comprehensive_barcode_detection(image_to_process, debug=False)
+                except Exception as e:
+                    st.error(f"❌ Error during barcode detection: {str(e)}")
+                    barcodes = []
+                    detection_method = "Error occurred"
             
             # Convert image to display format
             img_array = np.array(image_to_process)
@@ -162,8 +375,35 @@ with tab1:
             else:
                 st.error("❌ No barcode detected with any method.")
                 
+                # Analyze image quality and provide specific feedback
+                try:
+                    quality_info = analyze_image_quality(image_to_process)
+                    
+                    st.warning("**🔍 Image Analysis Results:**")
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.write("**📊 Image Metrics:**")
+                        st.write(f"• Size: {quality_info['size'][1]}×{quality_info['size'][0]} pixels")
+                        st.write(f"• Brightness: {quality_info['mean_brightness']:.1f}/255")
+                        st.write(f"• Contrast: {quality_info['contrast']}/255")
+                        st.write(f"• Sharpness: {quality_info['sharpness']:.1f}")
+                    
+                    with col2:
+                        st.write("**💡 Recommendations:**")
+                        if quality_info['recommendations']:
+                            for rec in quality_info['recommendations']:
+                                st.write(f"• {rec}")
+                        else:
+                            st.write("• Image quality appears adequate")
+                            st.write("• Barcode may not be present or readable")
+                            st.write("• Try a different image or manual entry")
+                
+                except Exception as e:
+                    st.warning(f"Could not analyze image quality: {str(e)}")
+                
                 # Provide specific guidance for iPhone users
-                if barcode_input_method == "📱 Upload Photo (Recommended for iPhone)":
+                if barcode_input_method == "📱 Upload Photo (Highest Quality)":
                     st.warning("**📱 iPhone Photography Tips:**")
                     col1, col2 = st.columns(2)
                     with col1:
@@ -695,3 +935,6 @@ if st.sidebar.button("Clear All Inventory Data"):
     with confirm_col2:
         if st.button("❌ Cancel"):
             pass
+
+# iPhone Macro Camera Configuration
+def get_iphone_camera_constraints():
